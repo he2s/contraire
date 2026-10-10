@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>contraire</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b5bd6'/%3E%3Cpath d='M8 12h16v10H8z M11 8h4v4h-4z M17 8h4v4h-4z' fill='white'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f2f5; --line: #e3e5ea;
+  --text: #16181d; --muted: #646a76; --faint: #9aa0ab;
+  --accent: #5b5bd6; --accent-soft: #ececfb;
+  --green: #1f9d61; --green-soft: #e3f5ec;
+  --amber: #b7791f; --amber-soft: #fbf1df;
+  --red: #d43f3a; --red-soft: #fbe7e6;
+  --grey-soft: #eceef1;
+  --glow: rgba(91,91,214,.13); --tb: rgba(246,247,249,.78);
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  --shadow-lg: 0 20px 50px rgba(16,24,40,.18);
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --radius: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e0f13; --panel: #16181d; --panel-2: #1c1f25; --line: #262a32;
+    --text: #e8eaee; --muted: #9aa1ad; --faint: #646b78;
+    --accent: #8b8bf5; --accent-soft: #23234a;
+    --green: #3ecf8e; --green-soft: #12291f;
+    --amber: #f0b44c; --amber-soft: #2d2412;
+    --red: #f2706b; --red-soft: #2f1716;
+    --grey-soft: #22252c;
+    --glow: rgba(139,139,245,.16); --tb: rgba(14,15,19,.75);
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
+    --shadow-lg: 0 20px 60px rgba(0,0,0,.6);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(1200px 380px at 50% -160px, var(--glow), transparent 70%) no-repeat, var(--bg);
+  min-height: 100vh; color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px 60px; }
+
+/* header */
+header { display: flex; align-items: center; gap: 14px; padding: 22px 0 18px; flex-wrap: wrap; }
+.logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #7c7cf0, #4b4bc8); box-shadow: 0 6px 18px -6px var(--accent), inset 0 1px 0 rgba(255,255,255,.25); display: grid; place-items: center; color: #fff; flex: none; }
+.brand h1 { font-size: 18px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.spacer { flex: 1; }
+.live { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.live.off i { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+
+/* stat tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.tile .k { color: var(--muted); font-size: 12px; }
+.tile .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.tile .s { color: var(--faint); font-size: 12px; }
+.tile { transition: transform .2s, box-shadow .2s; }
+.tile:hover { transform: translateY(-1px); box-shadow: 0 6px 20px -8px rgba(16,24,40,.18); }
+.comp { display: flex; height: 4px; border-radius: 9px; overflow: hidden; background: var(--grey-soft); margin-top: 8px; gap: 2px; }
+.comp i { display: block; height: 100%; transition: flex-grow .5s; }
+.comp .g { background: var(--green); } .comp .a { background: var(--amber); } .comp .r { background: var(--red); } .comp .x { background: var(--faint); opacity: .5; }
+@media (max-width: 720px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+
+/* toolbar */
+.toolbar { position: sticky; top: 0; z-index: 5; background: var(--tb); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); padding: 10px 0; margin-top: -10px; display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.tabs { display: inline-flex; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: none; padding: 6px 14px; border-radius: 7px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.tabs button.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.tabs .n { color: var(--faint); font-weight: 400; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.search { flex: 1; min-width: 180px; position: relative; }
+.search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--faint); }
+input[type=text], select {
+  width: 100%; background: var(--panel); border: 1px solid var(--line); color: var(--text);
+  border-radius: 10px; padding: 8px 12px; font: inherit; outline: none; transition: border-color .15s, box-shadow .15s;
+}
+.search input { padding-left: 34px; }
+input[type=text]:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel);
+  padding: 7px 12px; border-radius: 10px; cursor: pointer; font-weight: 500; white-space: nowrap; transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--red); }
+.btn:disabled { opacity: .5; cursor: default; }
+label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
+
+/* list */
+.group { margin-bottom: 18px; }
+.group h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px 4px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.group h2 .n { color: var(--faint); font-weight: 500; }
+.list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.3fr) auto; gap: 16px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+.row:first-child { border-top: 0; }
+.row { position: relative; }
+.row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); opacity: 0; transition: opacity .15s; }
+.row:hover { background: var(--panel-2); }
+.row:hover::before { opacity: 1; }
+.tag { color: var(--faint); }
+.skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--grey-soft), var(--panel-2), var(--grey-soft)); background-size: 200% 100%; animation: sk 1.2s infinite linear; }
+@keyframes sk { to { background-position: -200% 0; } }
+.name { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--faint); }
+.dot.running { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.dot.paused, .dot.restarting { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.dot.dead { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+.dot.busy { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 12px; font-weight: 500; background: var(--grey-soft); color: var(--muted); margin: 2px 4px 2px 0; text-decoration: none; }
+a.pill { color: var(--accent); background: var(--accent-soft); }
+a.pill:hover { text-decoration: underline; }
+.pill.green { background: var(--green-soft); color: var(--green); }
+.pill.amber { background: var(--amber-soft); color: var(--amber); }
+.pill.red { background: var(--red-soft); color: var(--red); }
+.actions { display: flex; gap: 2px; }
+.icon { border: 0; background: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: background .12s, color .12s; }
+.icon:hover { background: var(--grey-soft); color: var(--text); }
+.icon.go:hover { color: var(--green); background: var(--green-soft); }
+.icon.warn:hover { color: var(--amber); background: var(--amber-soft); }
+.icon.bad:hover { color: var(--red); background: var(--red-soft); }
+.icon:disabled { opacity: .3; pointer-events: none; }
+.empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+@media (max-width: 720px) {
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .row .hide-sm { display: none; }
+}
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(10,12,16,.38); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100vw); background: var(--bg); z-index: 11;
+  box-shadow: var(--shadow-lg); transform: translateX(105%); transition: transform .25s cubic-bezier(.2,.8,.2,1);
+  display: flex; flex-direction: column;
+}
+.drawer.on { transform: none; }
+.dhead { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.dhead h3 { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbody { overflow-y: auto; padding: 18px 20px 30px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.card h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.card h4 .spacer { flex: 1; }
+.meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 600px) { .meters { grid-template-columns: repeat(2, 1fr); } }
+.meter .k { font-size: 12px; color: var(--muted); }
+.meter .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spark { display: block; width: 100%; height: 34px; margin-top: 6px; overflow: visible; }
+.spark path.l { fill: none; stroke: var(--accent); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.spark path.f { fill: var(--accent); opacity: .14; }
+.bar { height: 5px; border-radius: 9px; background: var(--grey-soft); margin-top: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 9px; transition: width .4s; }
+dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 7px 14px; margin: 0; }
+dt { color: var(--muted); }
+dd { margin: 0; word-break: break-word; }
+.logs {
+  background: #0b0c10; color: #d6dae2; border-radius: 10px; padding: 12px 14px; height: 420px; overflow: auto;
+  font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; margin: 0;
+}
+.logs .ts { color: #5d6575; }
+.logs .e { color: #ff8f8a; }
+.logs .w { color: #f3c26b; }
+.card h4 label { text-transform: none; letter-spacing: 0; }
+.card select { width: auto; padding: 4px 8px; font-size: 12.5px; }
+.envlist { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; color: var(--muted); }
+
+/* modal + toast */
+.modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 30; background: rgba(10,12,16,.45); }
+.modal[hidden] { display: none; }
+.modal .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow-lg); }
+.modal h3 { margin: 0 0 6px; font-size: 16px; }
+.modal p { margin: 0 0 18px; color: var(--muted); }
+.modal .row2 { display: flex; justify-content: flex-end; gap: 8px; }
+.toasts { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 40; align-items: center; }
+.toast { background: var(--text); color: var(--bg); padding: 9px 14px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: 13px; animation: up .2s ease-out; max-width: 90vw; }
+.toast.err { background: var(--red); color: #fff; }
+@keyframes up { from { transform: translateY(8px); opacity: 0; } }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></div>
+    <div class="brand"><h1 id="host">contraire</h1><p id="hostsub">connecting…</p></div>
+    <div class="spacer"></div>
+    <span class="live" id="live"><i></i><span>live</span></span>
+  </header>
+
+  <section class="tiles">
+    <div class="tile"><div class="k">Running</div><div class="v" id="t-run">–</div><div class="comp" id="t-comp"></div></div>
+    <div class="tile"><div class="k">Stopped</div><div class="v" id="t-stop">–</div><div class="s" id="t-stop-s">&nbsp;</div></div>
+    <div class="tile"><div class="k">Images</div><div class="v" id="t-img">–</div><div class="s" id="t-img-s">&nbsp;</div></div>
+    <div class="tile"><div class="k">Host</div><div class="v" id="t-host">–</div><div class="s" id="t-host-s">&nbsp;</div></div>
+  </section>
+
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="on" data-tab="containers">Containers<span class="n" id="n-c"></span></button>
+      <button data-tab="images">Images<span class="n" id="n-i"></span></button>
+    </div>
+    <div class="search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="text" id="q" placeholder="Filter by name, image, port…  ( / )" autocomplete="off">
+    </div>
+    <span id="tb-containers"><label class="chk"><input type="checkbox" id="showall" checked> show stopped</label></span>
+    <span id="tb-images" style="display:none;gap:8px">
+      <button class="btn primary" id="pull">Pull image</button>
+      <button class="btn" id="prune">Prune dangling</button>
+    </span>
+  </div>
+
+  <main id="view"><div class="list"><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:55%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:45%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div></div></main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="dhead">
+    <span class="dot" id="d-dot"></span>
+    <div style="min-width:0;flex:1"><h3 id="d-name"></h3><div class="sub mono" id="d-image"></div></div>
+    <div class="actions" id="d-actions"></div>
+    <button class="icon" id="d-close" title="Close (Esc)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="dbody" id="dbody"></div>
+</aside>
+
+<div class="modal" id="modal" hidden>
+  <div class="box">
+    <h3 id="m-title"></h3>
+    <p id="m-text"></p>
+    <div id="m-extra"></div>
+    <div class="row2"><button class="btn" id="m-cancel">Cancel</button><button class="btn primary" id="m-ok">OK</button></div>
+  </div>
+</div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const I = {
+  play: '<path d="M7 4v16l13-8z"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  restart: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  logs: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+};
+const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+
+const fmtBytes = b => {
+  if (b == null || isNaN(b)) return "–";
+  const u = ["B", "KB", "MB", "GB", "TB"]; let i = 0;
+  while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+  return (b >= 100 || i === 0 ? b.toFixed(0) : b.toFixed(1)) + " " + u[i];
+};
+const ago = t => {
+  const s = Date.now() / 1000 - t;
+  if (s < 60) return "just now";
+  for (const [d, n] of [[31536000, "y"], [2592000, "mo"], [86400, "d"], [3600, "h"], [60, "m"]])
+    if (s >= d) return Math.floor(s / d) + n + " ago";
+};
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "X-Contraire": "1", "Content-Type": "application/json", ...(opts.headers || {}) } });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { msg = (await r.json()).message || msg; } catch {}
+    throw new Error(msg);
+  }
+  const ct = r.headers.get("content-type") || "";
+  if (r.status === 204) return null;
+  return ct.includes("json") ? r.json() : r.text();
+}
+
+function toast(msg, err) {
+  const el = document.createElement("div");
+  el.className = "toast" + (err ? " err" : "");
+  el.textContent = msg;
+  $("#toasts").append(el);
+  setTimeout(() => el.remove(), err ? 6000 : 3000);
+}
+
+function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
+  return new Promise(res => {
+    $("#m-title").textContent = title;
+    $("#m-text").textContent = text;
+    $("#m-extra").innerHTML = extra;
+    const okb = $("#m-ok");
+    okb.textContent = ok;
+    okb.className = "btn " + (danger ? "danger" : "primary");
+    $("#modal").hidden = false;
+    const first = $("#m-extra input"); (first || okb).focus();
+    const done = v => {
+      $("#modal").hidden = true;
+      okb.onclick = $("#m-cancel").onclick = $("#modal").onkeydown = null;
+      res(v);
+    };
+    okb.onclick = () => done(first ? first.value : true);
+    $("#m-cancel").onclick = () => done(false);
+    $("#modal").onkeydown = e => { if (e.key === "Escape") done(false); if (e.key === "Enter") okb.click(); };
+  });
+}
+
+/* ---------- state ---------- */
+const S = { tab: "containers", containers: [], images: [], info: null, busy: new Set(), open: null };
+
+const cname = c => (c.Names?.[0] || c.Id.slice(0, 12)).replace(/^\//, "");
+const ports = c => {
+  const seen = new Set(), out = [];
+  for (const p of c.Ports || []) {
+    const k = `${p.PublicPort || ""}:${p.PrivatePort}/${p.Type}`;
+    if (seen.has(k)) continue; seen.add(k);
+    out.push(p);
+  }
+  return out.sort((a, b) => (a.PublicPort || 1e6) - (b.PublicPort || 1e6) || a.PrivatePort - b.PrivatePort);
+};
+const portPills = (c, max = 3) => {
+  const ps = ports(c);
+  const html = ps.slice(0, max).map(p => p.PublicPort
+    ? `<a class="pill" href="${p.PrivatePort === 443 ? "https" : "http"}://${esc(location.hostname)}:${p.PublicPort}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${p.PublicPort}→${p.PrivatePort}</a>`
+    : `<span class="pill">${p.PrivatePort}/${esc(p.Type)}</span>`).join("");
+  return html + (ps.length > max ? `<span class="pill">+${ps.length - max}</span>` : "");
+};
+const imageHtml = img => {
+  const m = String(img).match(/^(.*?)(:[^:/@]+)?(@sha256:.*)?$/);
+  return esc(m[1]) + (m[2] ? `<span class="tag">${esc(m[2])}</span>` : "") + (m[3] ? `<span class="tag">@${esc(m[3].slice(8, 20))}</span>` : "");
+};
+const healthPill = c => {
+  const h = (c.Status.match(/\((healthy|unhealthy|health: starting)\)/) || [])[1];
+  return h ? ` <span class="pill ${h === "healthy" ? "green" : h === "unhealthy" ? "red" : "amber"}" style="margin:0 0 0 4px;font-size:11px">${h.replace("health: ", "")}</span>` : "";
+};
+const stateClass = c => S.busy.has(c.Id) ? "busy" : c.State === "exited" && !/\(0\)/.test(c.Status) ? "dead" : c.State;
+
+function actionButtons(c) {
+  const st = c.State, b = S.busy.has(c.Id) ? "disabled" : "";
+  const btn = (a, n, cls, title) => `<button class="icon ${cls}" data-act="${a}" data-id="${esc(c.Id)}" title="${title}" ${b}>${icon(n)}</button>`;
+  return (st === "running"
+      ? btn("restart", "restart", "warn", "Restart") + btn("pause", "pause", "warn", "Pause") + btn("stop", "stop", "bad", "Stop")
+      : st === "paused"
+        ? btn("unpause", "play", "go", "Resume") + btn("stop", "stop", "bad", "Stop")
+        : btn("start", "play", "go", "Start") + btn("remove", "trash", "bad", "Remove"));
+}
+
+/* ---------- rendering ---------- */
+function renderContainers() {
+  const q = $("#q").value.trim().toLowerCase();
+  const all = $("#showall").checked;
+  const list = S.containers.filter(c => (all || c.State === "running" || c.State === "paused" || S.busy.has(c.Id)) &&
+    (!q || [cname(c), c.Image, c.Status, ...(c.Ports || []).map(p => p.PublicPort)].join(" ").toLowerCase().includes(q)));
+
+  if (!list.length) {
+    $("#view").innerHTML = `<div class="list"><div class="empty">${S.containers.length ? "No containers match." : "No containers yet."}</div></div>`;
+    return;
+  }
+  const groups = new Map();
+  for (const c of list) {
+    const g = c.Labels?.["com.docker.compose.project"] || "";
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(c);
+  }
+  const order = [...groups.keys()].sort((a, b) => (a === "") - (b === "") || a.localeCompare(b));
+  const rank = c => c.State === "running" ? 0 : c.State === "paused" ? 1 : 2;
+  $("#view").innerHTML = order.map(g => {
+    const cs = groups.get(g).sort((a, b) => rank(a) - rank(b) || cname(a).localeCompare(cname(b)));
+    const up = cs.filter(c => c.State === "running").length;
+    return `<div class="group">
+      ${order.length > 1 || g ? `<h2>${g ? esc(g) : "standalone"}<span class="n">${up}/${cs.length} up</span></h2>` : ""}
+      <div class="list">${cs.map(c => `
+        <div class="row" data-open="${esc(c.Id)}">
+          <div class="name"><span class="dot ${stateClass(c)}"></span><div style="min-width:0"><b>${esc(cname(c))}</b><div class="sub">${esc(c.Status.replace(/ \((healthy|unhealthy|health: starting)\)/, ""))}${healthPill(c)}</div></div></div>
+          <div class="sub mono hide-sm" title="${esc(c.Image)}">${imageHtml(c.Image)}</div>
+          <div class="hide-sm">${portPills(c)}</div>
+          <div class="actions">${actionButtons(c)}</div>
+        </div>`).join("")}</div></div>`;
+  }).join("");
+}
+
+function renderImages() {
+  const q = $("#q").value.trim().toLowerCase();
+  const used = new Map();
+  for (const c of S.containers) used.set(c.ImageID, (used.get(c.ImageID) || 0) + 1);
+  const list = S.images
+    .map(i => ({ ...i, tags: (i.RepoTags || []).filter(t => t !== "<none>:<none>") }))
+    .filter(i => !q || [...i.tags, i.Id].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => b.Created - a.Created);
+  if (!list.length) {
+    $("#view").innerHTML = `<div class="list"><div class="empty">${S.images.length ? "No images match." : "No images yet."}</div></div>`;
+    return;
+  }
+  $("#view").innerHTML = `<div class="list">${list.map(i => {
+    const n = used.get(i.Id) || 0;
+    return `<div class="row" style="cursor:default">
+      <div class="name"><span class="dot ${n ? "running" : ""}"></span><div style="min-width:0">
+        <b>${i.tags.length ? esc(i.tags[0]) : '<span style="color:var(--faint)">&lt;untagged&gt;</span>'}</b>
+        <div class="sub mono">${esc(i.Id.replace("sha256:", "").slice(0, 12))}${i.tags.length > 1 ? " · +" + (i.tags.length - 1) + " tags" : ""}</div></div></div>
+      <div class="sub hide-sm">${fmtBytes(i.Size)} · ${ago(i.Created)}</div>
+      <div class="hide-sm">${n ? `<span class="pill green">used by ${n}</span>` : `<span class="pill">unused</span>`}</div>
+      <div class="actions"><button class="icon bad" data-rmi="${esc(i.Id)}" data-label="${esc(i.tags[0] || i.Id.slice(7, 19))}" title="${n ? "In use" : "Remove"}" ${n ? "disabled" : ""}>${icon("trash")}</button></div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+function render() {
+  $("#n-c").textContent = S.containers.length || "";
+  $("#n-i").textContent = S.images.length || "";
+  (S.tab === "containers" ? renderContainers : renderImages)();
+  const run = S.containers.filter(c => c.State === "running").length;
+  const paused = S.containers.filter(c => c.State === "paused").length;
+  $("#t-run").textContent = run;
+  const errd = S.containers.filter(c => c.State === "exited" && !/\(0\)/.test(c.Status) || c.State === "dead").length;
+  const rest = S.containers.length - run - paused - errd;
+  $("#t-comp").innerHTML = [["g", run], ["a", paused], ["r", errd], ["x", rest]].filter(x => x[1]).map(([k, n]) => `<i class="${k}" style="flex-grow:${n}" title="${n}"></i>`).join("");
+  $("#t-stop").textContent = S.containers.length - run - paused;
+  const dead = S.containers.filter(c => c.State === "exited" && !/\(0\)/.test(c.Status)).length;
+  $("#t-stop-s").textContent = dead ? `${dead} exited with error` : " ";
+  $("#t-img").textContent = S.images.length;
+  $("#t-img-s").textContent = fmtBytes(S.images.reduce((a, i) => a + i.Size, 0));
+  if (S.info) {
+    const i = S.info;
+    $("#host").textContent = i.name || "docker";
+    $("#hostsub").textContent = `Docker ${i.version} · ${i.os}`;
+    $("#t-host").textContent = `${i.cpus} CPU`;
+    $("#t-host-s").textContent = `${fmtBytes(i.memory)} RAM · ${i.arch}`;
+  }
+  if (S.open) refreshDrawerHead();
+}
+
+/* ---------- data ---------- */
+let refreshing = false;
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    const [c, i, info] = await Promise.all([api("/api/containers"), api("/api/images"), S.info ? null : api("/api/info")]);
+    S.containers = c; S.images = i; if (info) S.info = info;
+    $("#live").classList.remove("off"); $("#live span").textContent = "live";
+    render();
+  } catch (e) {
+    $("#live").classList.add("off"); $("#live span").textContent = "offline";
+    $("#hostsub").textContent = e.message;
+  } finally { refreshing = false; }
+}
+
+async function act(id, action) {
+  const c = S.containers.find(x => x.Id === id);
+  const label = c ? cname(c) : id.slice(0, 12);
+  let path = `/api/containers/${id}/${action}`, method = "POST";
+  if (action === "remove") {
+    const ok = await ask({ title: `Remove ${label}?`, text: "The container and its anonymous filesystem changes will be deleted. Named volumes are kept.", ok: "Remove", danger: true });
+    if (!ok) return;
+    path = `/api/containers/${id}`; method = "DELETE";
+  }
+  S.busy.add(id); render();
+  try {
+    await api(path, { method });
+    toast(`${label}: ${action === "remove" ? "removed" : action + (action.endsWith("e") ? "d" : "ed")}`);
+    if (action === "remove" && S.open === id) closeDrawer();
+  } catch (e) { toast(`${label}: ${e.message}`, true); }
+  S.busy.delete(id);
+  await refresh();
+  if (S.open === id) loadDetail();
+}
+
+/* ---------- drawer ---------- */
+let drawerTimer = null, logTimer = null;
+
+function refreshDrawerHead() {
+  const c = S.containers.find(x => x.Id === S.open);
+  if (!c) return;
+  $("#d-dot").className = "dot " + stateClass(c);
+  $("#d-name").textContent = cname(c);
+  $("#d-image").textContent = c.Image;
+  $("#d-actions").innerHTML = actionButtons(c);
+}
+
+function openDrawer(id) {
+  S.open = id;
+  S.hist = { cpu: [], mem: [] };
+  history.replaceState(null, "", "#c/" + id);
+  $("#dbody").innerHTML = `
+    <div class="card"><h4>Live</h4><div class="meters" id="d-stats">
+      ${["CPU", "Memory", "Network ↓ / ↑", "Processes"].map(k => `<div class="meter"><div class="k">${k}</div><div class="v">–</div></div>`).join("")}
+    </div></div>
+    <div class="card"><h4>Overview</h4><div id="d-info"><div class="sub">Loading…</div></div></div>
+    <div class="card"><h4>Logs<span class="spacer"></span>
+      <label class="chk"><input type="checkbox" id="d-follow" checked> follow</label>
+      <label class="chk"><input type="checkbox" id="d-ts"> timestamps</label>
+      <select id="d-tail"><option>100</option><option selected>300</option><option>1000</option><option>5000</option></select>
+    </h4><pre class="logs" id="d-logs">Loading…</pre></div>
+    <div class="card"><h4>Environment<span class="spacer"></span><button class="btn" id="d-envbtn" style="padding:3px 10px;font-size:12px">Reveal</button></h4><pre class="envlist" id="d-env">Hidden — may contain secrets.</pre></div>`;
+  $("#d-tail").onchange = $("#d-ts").onchange = () => loadLogs(true);
+  $("#d-follow").onchange = () => $("#d-follow").checked && loadLogs(true);
+  refreshDrawerHead();
+  $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
+  $("#drawer").setAttribute("aria-hidden", "false");
+  loadDetail(); loadLogs(true); loadStats();
+  clearInterval(drawerTimer); clearInterval(logTimer);
+  drawerTimer = setInterval(loadStats, 3000);
+  logTimer = setInterval(() => $("#d-follow")?.checked && loadLogs(false), 2500);
+}
+
+function closeDrawer() {
+  S.open = null;
+  history.replaceState(null, "", location.pathname);
+  clearInterval(drawerTimer); clearInterval(logTimer);
+  $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on");
+  $("#drawer").setAttribute("aria-hidden", "true");
+}
+
+let detail = null;
+async function loadDetail() {
+  const id = S.open;
+  try {
+    const d = await api(`/api/containers/${id}`);
+    if (S.open !== id) return;
+    detail = d;
+    const st = d.State || {};
+    const statePill = st.Running ? (st.Paused ? "amber" : "green") : (st.ExitCode ? "red" : "");
+    const nets = Object.entries(d.NetworkSettings?.Networks || {});
+    const mounts = d.Mounts || [];
+    const rp = d.HostConfig?.RestartPolicy;
+    const cmd = [...(d.Config?.Entrypoint || []), ...(d.Config?.Cmd || [])].join(" ");
+    const c = S.containers.find(x => x.Id === id);
+    const rows = [
+      ["State", `<span class="pill ${statePill}">${esc(st.Status)}${!st.Running && st.FinishedAt?.[0] !== "0" ? ` · exit ${st.ExitCode}` : ""}</span>${st.Health ? `<span class="pill ${st.Health.Status === "healthy" ? "green" : st.Health.Status === "unhealthy" ? "red" : "amber"}">${esc(st.Health.Status)}</span>` : ""}${st.OOMKilled ? '<span class="pill red">OOM killed</span>' : ""}`],
+      ["Started", st.Running ? esc(new Date(st.StartedAt).toLocaleString()) : (st.FinishedAt?.[0] !== "0" ? "stopped " + esc(new Date(st.FinishedAt).toLocaleString()) : "never")],
+      ["Restart", `${esc(rp?.Name || "no")}${d.RestartCount ? ` · ${d.RestartCount} restarts` : ""}`],
+      ["ID", `<span class="mono">${esc(d.Id.slice(0, 12))}</span>`],
+      ["Command", `<span class="mono">${esc(cmd) || "–"}</span>`],
+      ["Ports", c && ports(c).length ? portPills(c, 99) : "–"],
+      ["Networks", nets.map(([n, v]) => `<span class="pill">${esc(n)}${v.IPAddress ? " · " + esc(v.IPAddress) : ""}</span>`).join("") || "–"],
+      ["Mounts", mounts.map(m => `<div class="mono">${esc(m.Name || m.Source)} → ${esc(m.Destination)}${m.RW ? "" : " (ro)"}</div>`).join("") || "–"],
+    ];
+    $("#d-info").innerHTML = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+    $("#d-envbtn").onclick = () => {
+      const env = d.Config?.Env || [];
+      $("#d-env").textContent = env.length ? env.sort().join("\n") : "No environment variables.";
+      $("#d-env").style.color = "var(--text)";
+      $("#d-envbtn").remove();
+    };
+  } catch (e) { $("#d-info").innerHTML = `<div class="sub">${esc(e.message)}</div>`; }
+}
+
+async function loadStats() {
+  const id = S.open;
+  const c = S.containers.find(x => x.Id === id);
+  const set = (vals) => {
+    const el = $("#d-stats"); if (!el || S.open !== id) return;
+    el.innerHTML = vals.map(([k, v, pct, hist]) => `<div class="meter"><div class="k">${k}</div><div class="v">${v}</div>${
+      hist && hist.length > 1 ? spark(hist) : pct != null ? `<div class="bar"><i style="width:${Math.min(100, pct).toFixed(1)}%"></i></div>` : ""}</div>`).join("");
+  };
+  if (!c || c.State !== "running") {
+    set([["CPU", "–"], ["Memory", "–"], ["Network ↓ / ↑", "–"], ["Processes", "–"]]);
+    return;
+  }
+  try {
+    const s = await api(`/api/containers/${id}/stats`);
+    const cpus = S.info?.cpus || 1;
+    const memPct = s.mem != null && s.mem_limit ? s.mem / s.mem_limit * 100 : null;
+    const H = S.hist;
+    if (s.cpu != null) H.cpu.push(s.cpu); if (s.mem != null) H.mem.push(s.mem);
+    if (H.cpu.length > 40) H.cpu.shift(); if (H.mem.length > 40) H.mem.shift();
+    set([
+      ["CPU", s.cpu != null ? s.cpu.toFixed(1) + "%" : "–", s.cpu != null ? s.cpu / cpus : null, H.cpu],
+      ["Memory", fmtBytes(s.mem) + (memPct != null && memPct < 99 ? ` <span class="sub" style="font-size:12px;font-weight:400">${memPct.toFixed(1)}%</span>` : ""), memPct, H.mem],
+      ["Network ↓ / ↑", `<span style="font-size:14px">${fmtBytes(s.rx)} / ${fmtBytes(s.tx)}</span>`],
+      ["Processes", s.pids ?? "–"],
+    ]);
+  } catch {}
+}
+
+function spark(v) {
+  const W = 100, Hh = 30, max = Math.max(...v) * 1.2 || 1;
+  const pts = v.map((y, i) => [i / (v.length - 1) * W, Hh - y / max * Hh]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
+  return `<svg class="spark" viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none"><path class="f" d="${d}L${W} ${Hh}L${pts[0][0].toFixed(1)} ${Hh}Z"/><path class="l" d="${d}"/></svg>`;
+}
+const LOG_RE = /^(\d{4}-\d\d-\d\dT[\d:.]+Z) ?/;
+async function loadLogs(force) {
+  const id = S.open, el = $("#d-logs");
+  if (!el) return;
+  try {
+    const txt = await api(`/api/containers/${id}/logs?tail=${$("#d-tail").value}`);
+    if (S.open !== id) return;
+    if (!force && el.dataset.raw === txt) return;
+    el.dataset.raw = txt;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    const showTs = $("#d-ts").checked;
+    const lines = txt.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").split("\n");
+    if (lines[lines.length - 1] === "") lines.pop();
+    el.innerHTML = lines.length ? lines.map(l => {
+      const m = l.match(LOG_RE);
+      const body = m ? l.slice(m[0].length) : l;
+      const cls = /\b(error|fatal|panic|exception|fail(ed)?)\b/i.test(body) ? "e" : /\bwarn(ing)?\b/i.test(body) ? "w" : "";
+      const ts = m && showTs ? `<span class="ts">${esc(new Date(m[1]).toLocaleString())}  </span>` : "";
+      return ts + (cls ? `<span class="${cls}">${esc(body)}</span>` : esc(body));
+    }).join("\n") : '<span class="ts">No log output.</span>';
+    if (force || atBottom) el.scrollTop = el.scrollHeight;
+  } catch (e) { el.textContent = e.message; }
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", async e => {
+  const a = e.target.closest("[data-act]");
+  if (a) { e.stopPropagation(); return act(a.dataset.id, a.dataset.act); }
+  const rm = e.target.closest("[data-rmi]");
+  if (rm) {
+    if (!await ask({ title: `Remove ${rm.dataset.label}?`, text: "The image will be deleted from this host.", ok: "Remove", danger: true })) return;
+    try { await api(`/api/images/${rm.dataset.rmi}`, { method: "DELETE" }); toast("Image removed"); }
+    catch (err) { toast(err.message, true); }
+    return refresh();
+  }
+  const row = e.target.closest("[data-open]");
+  if (row) openDrawer(row.dataset.open);
+});
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  S.tab = b.dataset.tab;
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  $("#tb-containers").hidden = S.tab !== "containers";
+  $("#tb-images").style.display = S.tab === "images" ? "inline-flex" : "none";
+  render();
+});
+$("#q").oninput = render;
+$("#showall").onchange = render;
+$("#scrim").onclick = closeDrawer;
+$("#d-close").onclick = closeDrawer;
+document.addEventListener("keydown", e => {
+  if (!$("#modal").hidden) return;
+  if (e.key === "Escape") { if (S.open) closeDrawer(); else { $("#q").value = ""; render(); } }
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); }
+});
+$("#pull").onclick = async () => {
+  const ref = await ask({ title: "Pull image", text: "Image reference, e.g. nginx:alpine or ghcr.io/owner/app:1.2", ok: "Pull",
+    extra: '<input type="text" placeholder="repository[:tag]" style="margin-bottom:16px" spellcheck="false">' });
+  if (!ref || !ref.trim()) return;
+  const btn = $("#pull"); btn.disabled = true; btn.textContent = "Pulling…";
+  try { await api("/api/images/pull", { method: "POST", body: JSON.stringify({ image: ref.trim() }) }); toast(`Pulled ${ref.trim()}`); }
+  catch (e) { toast(e.message, true); }
+  btn.disabled = false; btn.textContent = "Pull image";
+  refresh();
+};
+$("#prune").onclick = async () => {
+  if (!await ask({ title: "Prune dangling images?", text: "Removes untagged images not used by any container.", ok: "Prune", danger: true })) return;
+  try {
+    const r = await api("/api/images/prune", { method: "POST" });
+    toast(`Reclaimed ${fmtBytes(r.SpaceReclaimed || 0)}`);
+  } catch (e) { toast(e.message, true); }
+  refresh();
+};
+
+refresh().then(() => { const m = location.hash.match(/^#c\/([\w.-]+)$/); if (m) openDrawer(m[1]); });
+setInterval(() => { if (!document.hidden) refresh(); }, 4000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>

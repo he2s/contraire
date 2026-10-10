@@ -1,0 +1,15 @@
+[package]
+name = "contraire"
+version = "0.1.0"
+edition = "2024"
+description = "A tiny, beautiful Docker container manager for small machines"
+
+[dependencies]
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
