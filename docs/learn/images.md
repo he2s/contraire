@@ -31,6 +31,11 @@ CMD ["app"]                   # metadata: what to run
 
 Two images built `FROM alpine:3.20` **share** that bottom layer on disk. Ten containers of the same image share *all* of its layers. That is why a Raspberry Pi with a small SD card can still hold many of them.
 
+
+```live images
+In the dashboard this lists the biggest images on your own host.
+```
+
 ## Useful commands
 
 ```sh
@@ -41,5 +46,13 @@ docker build -t myapp:1.0 .        # build an image from ./Dockerfile
 ```
 
 In this dashboard, the **Images** tab shows the same list, marks which images are in use, and can pull or clean up for you.
+
+```quiz
+Q: You run ten containers from the same image. How often are its layers stored on disk?
+- [ ] Ten times, once per container
+- [x] Once; each container only adds a thin writable layer
+- [ ] Twice: one copy running, one as a backup
+> Image layers are read-only and shared. Containers add only their own small writable layer on top, which is why images save so much space.
+```
 
 Next: [How Linux does it](under-the-hood.md).

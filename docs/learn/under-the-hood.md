@@ -41,6 +41,14 @@ The image layers from the previous lesson are glued together by **OverlayFS**: r
 
 > **Why this matters:** because a container is just a process, starting one takes as long as starting the program itself. There is no operating system to boot. That is what makes containers practical on small machines.
 
+```quiz
+Q: A container keeps exiting with code 137. What is the most likely reason?
+- [ ] The program wasn't found
+- [x] It was killed: it ran out of memory, or someone force-stopped it
+- [ ] It finished its work normally
+> 137 = 128 + 9: the process received SIGKILL. With a memory limit, that's usually the kernel's out-of-memory killer. The dashboard's Incidents page records exactly these.
+```
+
 ## Security in one paragraph
 
 Namespaces separate containers well, but they all share **one kernel**. Treat a container like a separate user account, not a separate computer. And remember: whoever can talk to the Docker socket (`/var/run/docker.sock`) can start containers with full access to the host. That is effectively **root**, and it's why this dashboard asks for a password when it is reachable from the network.

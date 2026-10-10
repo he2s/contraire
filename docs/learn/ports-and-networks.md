@@ -18,6 +18,11 @@ Read `-p 8080:80` as **"host 8080 leads to container 80"**. In the Containers ta
 
 > **Tip:** `-p 127.0.0.1:8080:80` publishes the port only to this machine itself, which is a good default for databases and admin tools.
 
+
+```live ports
+In the dashboard this lists the published ports on your own host, with links.
+```
+
 ## Container-to-container: user networks
 
 Containers on the same **user-defined network** can find each other **by name**, because Docker runs a small DNS server for them:
@@ -41,5 +46,13 @@ The database never needs a published port: only `web` talks to it, over the priv
 | *your own* | Name-based discovery between the containers you attach |
 
 Compose creates one private network per project automatically, which is why services in a compose file can reach each other by service name.
+
+```quiz
+Q: What does `-p 8080:80` mean?
+- [ ] Container port 8080 is forwarded to host port 80
+- [x] Host port 8080 is forwarded to container port 80
+- [ ] The container may use ports 80 to 8080
+> The left side is always this machine, the right side the container: open http://this-host:8080 and you reach the server listening on 80 inside.
+```
 
 Next: [Keeping your data](keeping-data.md).

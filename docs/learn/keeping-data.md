@@ -38,6 +38,14 @@ The `:ro` suffix makes it **read-only** inside the container: the container can 
 
 > **On a Raspberry Pi:** SD cards wear out from constant writes. Put busy databases and logs on a USB SSD and point your volumes there. Your card will last years longer.
 
+```quiz
+Q: You remove a database container and start a new one from the same image. Where is your data?
+- [ ] Gone, whatever you did
+- [x] Still there, if it lived in a volume or bind mount
+- [ ] In the image, which saved it automatically
+> The container's own writable layer disappears with it; volumes and bind mounts live on. Mount the same volume into the new container and the data is back.
+```
+
 ## Backing up a volume
 
 ```sh

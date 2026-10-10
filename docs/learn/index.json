@@ -69,8 +69,8 @@
     {
       "slug": "cheat-sheet",
       "file": "cheat-sheet.md",
-      "title": "Cheat sheet",
-      "summary": "Everything on one page",
+      "title": "Docker cheat sheet",
+      "summary": "Docker commands on one page",
       "minutes": 2,
       "hue": 120
     }

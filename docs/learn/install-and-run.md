@@ -2,6 +2,11 @@
 
 One small file, about 800 KB, with no dependencies. On the machine that runs Docker it's the dashboard. On your laptop it's the remote control.
 
+
+```live host
+In the dashboard this shows the machine it's running on.
+```
+
 ## Raspberry Pi
 
 Works on a Pi 3, 4 and 5, with 32- or 64-bit Raspberry Pi OS. Docker must already be installed (see [On a Raspberry Pi](raspberry-pi.md)).

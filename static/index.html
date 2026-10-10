@@ -428,6 +428,49 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
   .cmds { border-color: #000; }
 }
 
+/* interactive lessons */
+.rv { opacity: 0; transform: translateY(14px); transition: opacity .5s ease var(--d, 0ms), transform .5s cubic-bezier(.2,.7,.2,1) var(--d, 0ms); }
+.rv.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .rv { opacity: 1; transform: none; } }
+@media print { .rv { opacity: 1; transform: none; } .term, .readbar { display: none !important; } }
+.readbar { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 20; pointer-events: none; }
+.readbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+.lprogress { display: flex; flex-direction: column; gap: 6px; min-width: 200px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.lprogress .bar { height: 10px; }
+.lprogress .bar i { background: var(--accent); }
+.lnav a.read .num { background: var(--ok); color: #fff; font-size: 0; }
+.lnav a.read .num::after { content: "✓"; font-size: 14px; }
+.quiz { border: var(--rule) solid var(--line); background: var(--panel-2); padding: 16px 18px; margin: 22px 0; }
+.quiz .qk { display: block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
+.quiz .qq { display: block; font-family: var(--display); font-size: 18px; font-weight: 800; margin: 4px 0 12px; }
+.quiz .opts { display: grid; gap: 8px; }
+.opt { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border: var(--rule) solid var(--line); background: var(--panel); cursor: pointer; font-weight: 600; transition: background .15s, color .15s, transform .15s; }
+.opt:hover:not(:disabled) { background: var(--invert); color: var(--invert-fg); transform: translateX(3px); }
+.opt .ol { display: grid; place-items: center; width: 26px; height: 26px; flex: none; background: var(--invert); color: var(--invert-fg); font-family: var(--mono); font-size: 12px; }
+.opt.right { background: var(--ok); border-color: var(--ok); color: #fff; }
+.opt.right .ol { background: #fff; color: var(--ok); }
+.opt.wrong { border-color: var(--accent); color: var(--accent-ink); }
+.opt:disabled:not(.right) { opacity: .45; }
+.shake { animation: shake .4s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+.quiz .why { margin-top: 12px; padding: 10px 12px; border-left: 6px solid var(--ok); background: var(--panel); animation: popin .25s ease-out; }
+.live { border: var(--rule) solid var(--line); margin: 22px 0; padding: 14px 16px; background: linear-gradient(90deg, var(--accent-soft), transparent 60%), var(--panel); }
+.live .lk { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ok-fg); }
+.live .lt { display: block; font-family: var(--display); font-size: 17px; font-weight: 800; margin: 4px 0 10px; }
+.lrows { display: grid; border: 1.5px solid var(--line); background: var(--panel); }
+.lrows a { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 12px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line-soft); color: var(--text); text-decoration: none; font-size: 13.5px; transition: background .12s, padding .15s; }
+.lrows a:first-child { border-top: 0; }
+.lrows a:hover { background: var(--panel-2); padding-left: 16px; }
+.lrows code { font-family: var(--mono); font-size: 12px; background: none; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrows span { color: var(--muted); font-size: 12px; text-align: right; }
+.lrows .arrow { color: var(--accent-ink); text-align: center; }
+.term { border: var(--rule) solid var(--line); background: #0d0d0d; color: #e9e7e3; max-width: 760px; }
+.term-bar { display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #2c2c2c; font-size: 11px; color: #8e8b87; }
+.term-bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3a3a; }
+.term-bar i:first-child { background: var(--accent); }
+.term-bar span { margin-left: 8px; font-family: var(--mono); }
+#term { margin: 0; padding: 14px 16px; min-height: 230px; font-family: var(--mono); font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+
 /* hover line + help popovers */
 .hint { margin-top: auto; padding: 12px 16px; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); border-top: var(--rule) solid var(--line); min-height: 64px; background: var(--panel); }
 .hint b { color: var(--accent-ink); }
@@ -1535,10 +1578,10 @@ async function renderLearn(slug) {
   const ch = Lr.index.chapters;
   slug = slug || Lr.slug || ch[0].slug;
   if (!view.querySelector(".learn")) {
-    view.innerHTML = `<header class="ph"><div><div class="kick">${ch.length} lessons · loaded live from GitHub</div><h1>Learn Docker</h1></div></header>
+    view.innerHTML = `<header class="ph"><div><div class="kick">${ch.length} lessons · loaded live from GitHub</div><h1>Learn Docker</h1></div><div class="lprogress" title="Lessons read"><span>your progress</span><div class="bar"><i id="lprog" style="width:0"></i></div></div></header><div class="readbar" id="readbar" aria-hidden="true"><i></i></div>
       <div class="learn"><nav class="lnav" aria-label="Lessons">${ch.map((c, i) => `
         <a href="#learn/${esc(c.slug)}" data-learn="${esc(c.slug)}" style="--h:${c.hue ?? hue(c.slug)}"><span class="num">${i + 1}</span><span>${esc(c.title)}<small>${esc(c.minutes)} min · ${esc(c.summary)}</small></span></a>`).join("")}
-        <a href="#cheatsheet" style="grid-template-columns:28px 1fr;border-top:2px solid var(--line)"><span class="num" style="background:var(--accent);color:#fff">›_</span><span>Cheat sheet<small>Command line, Claude Code and MCP</small></span></a>
+        <a href="#cheatsheet" style="grid-template-columns:28px 1fr;border-top:2px solid var(--line)"><span class="num" style="background:var(--accent);color:#fff">›_</span><span>CLI cheat sheet<small>contraire, Claude Code and MCP</small></span></a>
         <div class="src">Nothing here is stored on this machine. <a href="${esc(Lr.index.source || docsBase())}" target="_blank" rel="noopener">Edit on GitHub</a></div></nav>
         <article class="doc" id="doc"></article></div>`;
   }
@@ -1562,6 +1605,7 @@ async function openLesson(slug) {
        ${next ? `<a href="#learn/${esc(next.slug)}" data-learn="${esc(next.slug)}" style="text-align:right"><small>Next</small>${esc(next.title)} →</a>` : ""}</nav>`;
     doc.style.animation = "none"; void doc.offsetWidth; doc.style.animation = "";
     doc.querySelectorAll("img[data-src]").forEach(loadImage);
+    fillLive(doc); revealIn(doc); markRead(); readingBar();
     window.scrollTo({ top: 0 });
   } catch (e) { doc.innerHTML = `<p class="muted">Couldn't load this lesson: ${esc(e.message)}</p>`; }
 }
@@ -1616,7 +1660,8 @@ async function renderCheatsheet() {
   const lead = (intro.replace(/^# .*\n/, "").trim());
   const file = Lr.index?.cheatsheet?.file || "cli-cheatsheet.md";
   view.innerHTML = head(`command line · claude code · mcp`) + `
-    <section class="card mood"><span class="badge" aria-hidden="true">›_</span><div class="txt"><strong>${esc((intro.match(/^# (.*)/m)?.[1] || "").replace(/^cheat sheet:\s*/i, "") || "Everything on one page")}</strong>
+    <div class="term" aria-hidden="true"><div class="term-bar"><i></i><i></i><i></i><span>${esc(S.info?.name || "pi")}: contraire</span></div><pre id="term"></pre></div>
+    <section class="card mood"><span class="badge" aria-hidden="true">›_</span><div class="txt"><strong>${esc((intro.match(/^# (.*)/m)?.[1] || "").replace(/^cheat sheet:\s*/i, "").replace(/^./, c => c.toUpperCase()) || "Everything on one page")}</strong>
       <span class="muted">${esc(lead)}</span></div>
       <span class="cs-host"><span class="muted">Your server</span><code>${esc(location.origin)}</code>${copyBtn(location.origin, "Copy server address")}</span></section>
     <div class="sheet" id="sheet">${secs.map((sec, i) => {
@@ -1624,7 +1669,10 @@ async function renderCheatsheet() {
       return `<section class="sheetcard" aria-labelledby="cs-${i}"><h2 id="cs-${i}"><span class="no">${String(i + 1).padStart(2, "0")}</span>${esc(title)}</h2><div class="sbody">${sheetSection(body)}</div></section>`;
     }).join("")}</div>
     <p class="muted" style="font-size:12px">Loaded live from <a href="${esc((Lr.index?.source || "").replace(/\/?$/, "/") + file)}" target="_blank" rel="noopener">GitHub</a>; nothing here is stored on this machine. Commands use <code>$CONTRAIRE_TOKEN</code> so your token never appears on screen.</p>`;
+  hydrateSheet();
 }
+
+function hydrateSheet() { startTerminal(); revealIn($("#sheet")); }
 
 function filterSheet(q) {
   q = q.trim().toLowerCase();
@@ -1655,6 +1703,115 @@ async function loadImage(img) {
   } catch { img.replaceWith(Object.assign(document.createElement("span"), { className: "muted", textContent: `[image: ${img.alt}]` })); }
 }
 
+/* ---------- interactive lessons: quizzes, live blocks, progress, reveal ---------- */
+const store = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+/* ```quiz: "Q: question", "- [x] right answer", "- [ ] wrong answer", "> why" */
+function quizHtml(lines) {
+  const q = (lines.find(l => /^Q:/.test(l)) || "Q: ?").slice(2).trim();
+  const opts = lines.filter(l => /^- \[[ x]\]/.test(l)).map(l => ({ ok: l[3] === "x", text: l.slice(6).trim() }));
+  const why = lines.filter(l => /^>/.test(l)).map(l => l.replace(/^>\s?/, "")).join(" ");
+  const id = hue(q) + "-" + q.length;
+  return `<div class="quiz" data-quiz="${id}"><span class="qk">Quick check</span><b class="qq">${esc(q)}</b>
+    <div class="opts">${opts.map((o, i) => `<button class="opt" data-ok="${o.ok ? 1 : 0}"><span class="ol">${"ABCD"[i] || i + 1}</span>${esc(o.text)}</button>`).join("")}</div>
+    <div class="why" hidden>${esc(why)}</div></div>`;
+}
+function answerQuiz(btn) {
+  const qz = btn.closest(".quiz");
+  if (qz.classList.contains("done")) return;
+  const ok = btn.dataset.ok === "1";
+  btn.classList.add(ok ? "right" : "wrong");
+  if (!ok) { btn.classList.add("shake"); setTimeout(() => btn.classList.remove("shake"), 450); return; }
+  qz.classList.add("done");
+  qz.querySelectorAll(".opt").forEach(b => { b.disabled = true; if (b.dataset.ok === "1") b.classList.add("right"); });
+  qz.querySelector(".why").hidden = false;
+  const done = store("quiz") || {}; done[qz.dataset.quiz] = 1; store("quiz", done);
+}
+/* ```live <kind>: the lesson's example, but from this host, right now. */
+function fillLive(root) {
+  root.querySelectorAll(".live[data-live]").forEach(el => {
+    const kind = el.dataset.live, cs = S.containers;
+    const head = t => `<span class="lk"><i class="dot pulse" style="width:8px;height:8px;background:var(--ok)"></i> live from ${esc(S.info?.name || "this host")}</span><b class="lt">${t}</b>`;
+    if (kind === "containers") {
+      const up = cs.filter(c => c.State === "running").length;
+      el.innerHTML = head(`${up} of ${cs.length} containers are running here right now`) + `<div class="lrows">${cs.slice(0, 6).map(c => `<a href="#c/${esc(c.Id)}">${dotHtml(status(c))}<b>${esc(cname(c))}</b><code>${imageHtml(c.Image)}</code><span>${esc(c.Status.replace(HEALTH, "").trim())}</span></a>`).join("")}</div>${cs.length > 6 ? `<span class="muted">… and ${cs.length - 6} more on the Containers page</span>` : ""}`;
+    } else if (kind === "ports") {
+      const rows = cs.flatMap(c => ports(c).filter(p => p.PublicPort).map(p => ({ c, p })));
+      el.innerHTML = head(rows.length ? `${rows.length} published port${rows.length === 1 ? "" : "s"} on this host` : "No published ports on this host yet") + `<div class="lrows">${rows.slice(0, 8).map(({ c, p }) => `<a href="${p.PrivatePort === 443 ? "https" : "http"}://${esc(location.hostname)}:${p.PublicPort}" target="_blank" rel="noopener"><b>:${p.PublicPort}</b><span class="arrow">→</span><code>${esc(cname(c))}:${p.PrivatePort}/${esc(p.Type)}</code><span>open ↗</span></a>`).join("")}</div>`;
+    } else if (kind === "stacks") {
+      const ps = projects();
+      el.innerHTML = head(ps.length ? `${ps.length} Compose stack${ps.length === 1 ? "" : "s"} on this host` : "No Compose stacks running here yet") + `<div class="lrows">${ps.map(([p, pcs]) => `<a href="#stacks/${encodeURIComponent(p)}"><i class="sq" style="--h:${hue(p)}"></i><b>${esc(p)}</b><code>${pcs.length} services</code><span>${pcs.filter(c => c.State === "running").length}/${pcs.length} up</span></a>`).join("")}</div>`;
+    } else if (kind === "images") {
+      const used = new Set(cs.map(c => c.ImageID));
+      const top = [...S.images].sort((a, b) => b.Size - a.Size).slice(0, 5);
+      el.innerHTML = head(`${S.images.length} images, ${fmtBytes(S.images.reduce((a, i) => a + i.Size, 0))}, the biggest:`) + `<div class="lrows">${top.map(i => `<a href="#images"><b>${fmtBytes(i.Size)}</b><code>${esc((i.RepoTags || ["<untagged>"])[0])}</code><span>${used.has(i.Id) ? "in use" : "unused"}</span></a>`).join("")}</div>`;
+    } else if (kind === "host") {
+      const h = S.metrics?.host?.latest;
+      el.innerHTML = head(`${esc(S.info?.os || "")} · ${esc(S.info?.arch || "")}`) + `<div class="lrows"><a href="#containers"><b>${S.info?.cpus ?? "–"} CPU</b><code>${h ? h.cpu.toFixed(0) + "% busy · load " + h.load1.toFixed(2) : ""}</code><span></span></a><a href="#containers"><b>${fmtBytes(S.info?.memory)}</b><code>${h ? fmtBytes(h.mem) + " in use" : ""}</code><span></span></a><a href="#about"><b>${fmtBytes(S.self?.rss)}</b><code>used by this dashboard</code><span></span></a></div>`;
+    } else el.innerHTML = `<span class="muted">Unknown live block "${esc(kind)}"</span>`;
+  });
+}
+/* Fade sections in as they scroll into view; mark the lesson read at its end. */
+let revealObs = null;
+function revealIn(root) {
+  revealObs?.disconnect();
+  revealObs = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("in");
+    if (e.target.classList.contains("next") && Lr.slug) { const d = store("read") || {}; d[Lr.slug] = 1; store("read", d); markRead(); }
+    revealObs.unobserve(e.target);
+  }), { rootMargin: "0px 0px -8% 0px" });
+  root.querySelectorAll(":scope > *, .sheetcard").forEach((el, i) => { el.classList.add("rv"); el.style.setProperty("--d", Math.min(i, 8) * 40 + "ms"); revealObs.observe(el); });
+}
+function markRead() {
+  const d = store("read") || {};
+  document.querySelectorAll(".lnav a[data-learn]").forEach(a => a.classList.toggle("read", !!d[a.dataset.learn]));
+  const n = Lr.index ? Lr.index.chapters.filter(c => d[c.slug]).length : 0;
+  const bar = $("#lprog"); if (bar && Lr.index) { bar.style.width = (n / Lr.index.chapters.length * 100) + "%"; bar.parentElement.title = `${n} of ${Lr.index.chapters.length} lessons read`; }
+}
+function readingBar() {
+  const doc = $("#doc"), bar = $("#readbar i");
+  if (!doc || !bar) return;
+  const r = doc.getBoundingClientRect(), total = r.height - innerHeight;
+  bar.style.width = Math.max(0, Math.min(100, total > 0 ? -r.top / total * 100 : 100)) + "%";
+}
+addEventListener("scroll", () => { if (S.view === "learn") readingBar(); }, { passive: true });
+
+/* Cheat sheet: a small terminal that types real commands with this host's own output. */
+let termTimer = 0;
+function startTerminal() {
+  clearTimeout(termTimer);
+  const el = $("#term");
+  if (!el) return;
+  const run = S.containers.filter(c => c.State === "running");
+  const top = [...run].sort((a, b) => (metricsOf(b)?.cpu || 0) - (metricsOf(a)?.cpu || 0)).slice(0, 3);
+  const pad = (t, n) => (t + " ".repeat(n)).slice(0, n);
+  const script = [
+    ["$ contraire ps", run.slice(0, 3).map(c => `${pad(cname(c), 18)} ${pad(status(c).label.toLowerCase(), 10)} ${c.Status.replace(HEALTH, "").trim()}`)],
+    ["$ contraire top", top.map(c => `${pad(cname(c), 18)} ${pad((metricsOf(c)?.cpu ?? 0).toFixed(1) + "%", 8)} ${fmtBytes(metricsOf(c)?.mem)}`)],
+  ];
+  // The last command shows this host's real output too: new log patterns of the busiest container.
+  if (top[0] && !S.termPatterns?.[top[0].Id]) {
+    api(`/api/logs/patterns/${top[0].Id}?new=1`).then(p => { (S.termPatterns ||= {})[top[0].Id] = p; }).catch(() => {});
+  }
+  const tp = top[0] && S.termPatterns?.[top[0].Id];
+  if (top[0]) script.push(["$ contraire patterns " + cname(top[0]) + " --new", tp?.patterns?.length
+    ? ["COUNT  LEVEL  PATTERN", ...tp.patterns.slice(0, 2).map(x => `${String(x.count).padStart(5)}  ${pad(x.level || "-", 5)}  ${x.pattern.slice(0, 60)}`)]
+    : [`${cname(top[0])}: nothing new since it started (${tp ? tp.lines : "…"} lines, all known patterns)`]]);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = script.map(([c, o]) => [c, ...o].join("\n")).join("\n\n"); return; }
+  let s = 0, ch = 0, text = "";
+  const tick = () => {
+    if (!document.body.contains(el)) return;
+    const [cmd, outLines] = script[s];
+    if (ch <= cmd.length) { el.innerHTML = esc(text + cmd.slice(0, ch)) + '<span class="caret"></span>'; ch++; termTimer = setTimeout(tick, 45 + Math.random() * 50); return; }
+    text += cmd + "\n" + outLines.join("\n") + "\n\n";
+    el.innerHTML = esc(text) + '<span class="caret"></span>';
+    s++; ch = 0;
+    if (s === script.length) { s = 0; termTimer = setTimeout(() => { text = ""; tick(); }, 3500); return; }
+    termTimer = setTimeout(tick, 900);
+  };
+  tick();
+}
+
 /* Small Markdown subset: headings, paragraphs, lists, fenced code, quotes (callouts),
    tables, images, links, bold/italic/code. Everything is escaped before formatting. */
 function md(src) {
@@ -1679,10 +1836,12 @@ function md(src) {
   for (let i = 0; i < lines.length;) {
     const l = lines[i];
     let m;
-    if ((m = l.match(/^```\s*([\w+-]*)/))) {
+    if ((m = l.match(/^```\s*([\w+-]*)\s*(.*)$/))) {
       const code = [];
       for (i++; i < lines.length && !/^```/.test(lines[i]); i++) code.push(lines[i]);
       i++;
+      if (m[1] === "quiz") { out.push(quizHtml(code)); continue; }
+      if (m[1] === "live") { out.push(`<div class="live" data-live="${esc(m[2].trim())}"><span class="muted">Loading this host…</span></div>`); continue; }
       out.push(`<div class="code">${m[1] ? `<span class="lang">${esc(m[1])}</span>` : ""}<pre><code>${esc(code.join("\n"))}</code></pre><button class="copy" data-copycode>Copy</button></div>`);
     } else if ((m = l.match(/^(#{1,3})\s+(.*)/))) {
       const n = m[1].length;
@@ -1786,6 +1945,8 @@ document.addEventListener("click", async e => {
   if (e.target.closest("[data-stop]")) return;
   const th = e.target.closest("[data-theme-set]");
   if (th) return setTheme(th.dataset.themeSet);
+  const opt = e.target.closest(".opt");
+  if (opt) return answerQuiz(opt);
   const lesson = e.target.closest("[data-learn]");
   if (lesson) { e.preventDefault(); return openLesson(lesson.dataset.learn); }
   const f = e.target.closest("[data-filter]");

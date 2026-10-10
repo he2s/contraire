@@ -21,6 +21,11 @@ docker manifest inspect nginx:alpine | grep architecture
 
 Look for `arm64` (64-bit Raspberry Pi OS) or `arm` (32-bit).
 
+
+```live host
+In the dashboard this shows your host's CPU, memory and what this dashboard itself uses.
+```
+
 ## Make every megabyte count
 
 - Prefer **`alpine`** or **`slim`** variants of images: often a tenth of the size.
@@ -54,5 +59,13 @@ SD cards are slow and wear out with constant writing. Keep logs small and put da
 ```
 
 Save that as `/etc/docker/daemon.json` and restart Docker with `sudo systemctl restart docker`. Container logs then rotate instead of growing forever.
+
+```quiz
+Q: An image starts on your PC but exits immediately on the Pi with "exec format error". Why?
+- [ ] The Pi has too little memory
+- [x] The image was only built for x86 PCs, not ARM
+- [ ] Docker is too old on the Pi
+> Images are built per CPU architecture. Check with `docker manifest inspect <image>` for `arm64` or `arm`, or pick an image that publishes them.
+```
 
 Next: [Cheat sheet](cheat-sheet.md).

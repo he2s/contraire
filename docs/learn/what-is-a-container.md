@@ -20,6 +20,11 @@ A **virtual machine**, by comparison, is like building a whole separate house fo
 
 ![Containers share one operating system; virtual machines each bring their own.](img/containers-vs-vms.svg)
 
+
+```live containers
+In the dashboard this shows the containers on your own host, right now.
+```
+
 ## Why people love them
 
 | | Container | Virtual machine |
@@ -43,6 +48,14 @@ It appears in the **Containers** tab within a second. Open `http://<this-machine
 
 ```sh
 docker rm -f hello
+```
+
+```quiz
+Q: What do containers on one machine share?
+- [ ] Nothing; each one brings its own operating system
+- [x] The operating system kernel, but not their files or processes
+- [ ] Their files, so they can read each other's data
+> Each container gets its own files, processes and network, but all of them run on one shared kernel. That's why they start in a second and fit dozens on a Pi.
 ```
 
 Next, let's see what that `nginx:alpine` part means: [Images and layers](images.md).

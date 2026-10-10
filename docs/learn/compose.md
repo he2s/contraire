@@ -53,6 +53,11 @@ docker compose down       # stop and remove (volumes are kept)
 - **Start order**: `depends_on` makes `db` start first. With `condition: service_healthy`, `api` even waits until the database's health check passes.
 - **One name for the whole thing**, the *project*, taken from the folder name unless you set `-p`.
 
+
+```live stacks
+In the dashboard this lists the Compose stacks on your own host.
+```
+
 ## How this dashboard understands Compose
 
 Compose labels every container it creates: which project, which service, which file. This dashboard reads those labels, so it can:
@@ -63,5 +68,13 @@ Compose labels every container it creates: which project, which service, which f
 - Show the **compose file and folder** a project came from, with a button that copies the exact `docker compose up` command.
 
 > **Good to know:** the dashboard doesn't need the compose file itself, and it never edits it. Everything it knows comes from the running containers. To *change* a project (new image, new port), edit `compose.yaml` and run `docker compose up -d` again. Compose only recreates what changed.
+
+```quiz
+Q: `api` has `depends_on: db` with `condition: service_healthy`. What does Compose do on `up`?
+- [ ] Starts both at the same time
+- [x] Starts db, waits until its health check passes, then starts api
+- [ ] Starts api first and restarts it until db is there
+> `depends_on` sets the order; the health condition makes Compose wait for real readiness, not just "started". This dashboard's stack actions follow the same order.
+```
 
 Next: [On a Raspberry Pi](raspberry-pi.md).
