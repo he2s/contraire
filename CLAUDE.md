@@ -134,6 +134,7 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Themes: light, dark and auto. The choice is set via `data-theme` on `<html>` and remembered in localStorage. Dark tokens are defined twice, once for the explicit choice and once under `prefers-color-scheme`.
   - Scrollbars use the theme tokens (`scrollbar-color` plus `::-webkit-scrollbar`).
   - Fonts are injected by JS from Google Fonts so they never block the first render; offline, system fonts stand in.
+- **`build.rs`:** gzips `static/index.html` into the binary when a `gzip` tool exists (128 KB becomes 34 KB), and falls back to the raw page otherwise. The server sends it with `Content-Encoding: gzip`; clients without gzip support (plain `curl`) get a 406 with a hint.
 - **`static/index.html`:** the whole frontend, compiled in via `include_str!`. Vanilla JS and CSS with no build step.
   - Colors are CSS custom properties, with a dark palette under `prefers-color-scheme`.
   - Data arrives by push. Docker events trigger a debounced list re-fetch. Stats and logs stream while the drawer is open.

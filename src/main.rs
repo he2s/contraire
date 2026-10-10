@@ -21,7 +21,9 @@ use serde_json::{Value, json};
 /// Human-facing name of the tool. The crate, binary and repository stay `contraire`.
 pub const DISPLAY_NAME: &str = "mopsfraugibtdentonan";
 
-const INDEX_HTML: &str = include_str!("../static/index.html");
+/// The web page, gzip-compressed at build time when possible (see build.rs).
+const INDEX_PAGE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/index.html.bin"));
+const PAGE_ENCODING: &str = env!("PAGE_ENCODING");
 
 struct App {
     docker: Docker,
@@ -288,17 +290,27 @@ impl App {
         let method = if req.method == "HEAD" { "GET" } else { req.method.as_str() };
 
         Ok(match (method, segs.as_slice()) {
-            ("GET", [""]) => Response::new(200, "text/html; charset=utf-8", INDEX_HTML).with_header(
-                "Content-Security-Policy",
-                // The Learn tab fetches text and images from the docs origin (images shown via blob: URLs);
-                // fonts come from Google Fonts, with system fallbacks offline.
-                format!(
-                    "default-src 'self'; script-src 'unsafe-inline'; \
-                     style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; \
-                     img-src 'self' data: blob:; connect-src 'self' {}",
-                    origin(&self.docs_url)
-                ),
-            ),
+            ("GET", [""]) => {
+                let gzip_ok = req.header("accept-encoding").is_some_and(|e| e.contains("gzip"));
+                if PAGE_ENCODING == "gzip" && !gzip_ok {
+                    // Every browser accepts gzip; this is for e.g. plain curl.
+                    return Ok(Response::new(406, "text/plain; charset=utf-8", "Open this page in a web browser (or curl --compressed).\n"));
+                }
+                let page = Response::new(200, "text/html; charset=utf-8", INDEX_PAGE)
+                    .with_header("Vary", "Accept-Encoding")
+                    .with_header(
+                        "Content-Security-Policy",
+                        // The Learn tab fetches text and images from the docs origin (images shown via blob: URLs);
+                        // fonts come from Google Fonts, with system fallbacks offline.
+                        format!(
+                            "default-src 'self'; script-src 'unsafe-inline'; \
+                             style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; \
+                             img-src 'self' data: blob:; connect-src 'self' {}",
+                            origin(&self.docs_url)
+                        ),
+                    );
+                if PAGE_ENCODING == "gzip" { page.with_header("Content-Encoding", "gzip") } else { page }
+            }
             ("GET", ["api", "info"]) => self.info()?,
             ("GET", ["api", "config"]) => {
                 Response::json(200, json!({ "name": DISPLAY_NAME, "docs": self.docs_url, "version": env!("CARGO_PKG_VERSION") }).to_string())
