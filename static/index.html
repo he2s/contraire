@@ -65,7 +65,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--text); font: 14px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--text); font: 13.5px/1.4 var(--body); -webkit-font-smoothing: antialiased; }
 a { color: var(--link); text-underline-offset: 2px; }
 button, input, select { font: inherit; color: inherit; border-radius: 0; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
@@ -90,7 +90,7 @@ html, .side, .table .scroll, .loglines, .doc pre, .envlist { scrollbar-color: va
 .side { background: var(--side); border-right: var(--rule) solid var(--line); padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .side > * { border-bottom: var(--rule) solid var(--line); }
 .side > .foot, .side > .seg { border-bottom: 0; }
-main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex; flex-direction: column; gap: 24px; }
+main { min-width: 0; padding: 18px clamp(16px, 1.8vw, 32px) 40px; display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 900px) {
   .app { grid-template-columns: 1fr; }
   .side { position: static; height: auto; border-right: 0; border-bottom: var(--rule) solid var(--line); }
@@ -107,9 +107,9 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .conn strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conn span { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ok-fg); }
 .conn.off span { color: var(--accent-ink); }
-.navlabel { padding: 12px 16px 10px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); border-bottom: var(--rule) solid var(--line); }
+.navlabel { padding: 9px 16px 8px; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); border-bottom: var(--rule) solid var(--line); }
 .nav { display: flex; flex-direction: column; }
-.nav a { display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 0 16px; text-decoration: none; color: var(--text); font-weight: 600; border-bottom: 1px solid var(--line-soft); transition: background .12s; }
+.nav a { display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 16px; text-decoration: none; color: var(--text); font-weight: 600; border-bottom: 1px solid var(--line-soft); transition: background .12s; }
 .nav a:last-child { border-bottom: 0; }
 .nav a:hover { background: var(--chip); }
 .nav a[aria-current="page"] { background: var(--accent); color: #fff; }
@@ -117,7 +117,7 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .nav a span:first-of-type { flex: 1; }
 .count { font-family: var(--mono); font-size: 12px; font-weight: 600; padding: 0 6px; border: 1.5px solid var(--line); color: var(--text); }
 @media (max-width: 900px) { .nav { flex-direction: row; flex-wrap: wrap; } .nav a { flex: 1 1 160px; } }
-.sbox { display: flex; flex-direction: column; gap: 9px; padding: 14px 16px; background: var(--panel); }
+.sbox { display: flex; flex-direction: column; gap: 6px; padding: 10px 16px; background: var(--panel); }
 .sbox .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); display: flex; justify-content: space-between; align-items: center; }
 .kv { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
 .kv span:last-child { font-family: var(--mono); font-size: 12px; text-align: right; font-weight: 500; }
@@ -132,13 +132,13 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 
 /* page header */
 .ph { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
-.ph .kick { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
-.ph h1 { margin: 6px 0 0; font-family: var(--display); font-size: 46px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; }
+.ph .kick { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
+.ph h1 { margin: 4px 0 0; font-family: var(--display); font-size: 34px; line-height: 1; font-weight: 800; letter-spacing: -0.03em; }
 .ph .tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 0 1 600px; justify-content: flex-end; }
 .field { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: var(--panel-2); border: var(--rule) solid var(--line); flex: 1 1 260px; color: var(--muted); }
 .field:focus-within { outline: 3px solid var(--accent); outline-offset: 1px; }
 .field input { border: 0; outline: none; background: transparent; color: var(--text); flex: 1; min-width: 0; height: 100%; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 16px; border: var(--rule) solid var(--line); background: var(--panel-2); color: var(--text); font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .12s, color .12s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 14px; border: var(--rule) solid var(--line); background: var(--panel-2); color: var(--text); font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap; transition: background .12s, color .12s; }
 .btn:hover { background: var(--invert); color: var(--invert-fg); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { background: var(--invert); border-color: var(--invert); color: var(--invert-fg); }
@@ -146,23 +146,23 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .btn.danger { color: var(--danger); border-color: var(--line); }
 .btn.danger:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn.sm { height: 36px; padding: 0 12px; font-size: 13px; }
-.ib { display: inline-grid; place-items: center; width: 38px; height: 38px; border: 0; background: transparent; color: var(--text); cursor: pointer; transition: background .12s, color .12s; flex: none; }
+.btn.sm { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.ib { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 0; background: transparent; color: var(--text); cursor: pointer; transition: background .12s, color .12s; flex: none; }
 .ib:hover { background: var(--invert); color: var(--invert-fg); }
 .ib.go { color: var(--ok); } .ib.bad:hover { background: var(--accent); color: #fff; }
 .ib:disabled { opacity: .3; pointer-events: none; }
 .ib.xs { width: 26px; height: 26px; }
 
 /* cards */
-.card { background: var(--panel); border: var(--rule) solid var(--line); padding: 18px 20px; }
+.card { background: var(--panel); border: var(--rule) solid var(--line); padding: 12px 16px; }
 .card h2 { margin: 0; font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 /* Ruled grid: each cell's outline overlaps its neighbours', giving single 2px rules without empty filler cells. */
-.grid { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); padding: calc(var(--rule) / 2); }
+.grid { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); padding: calc(var(--rule) / 2); }
 .grid > .card { border: 0; outline: var(--rule) solid var(--line); outline-offset: calc(var(--rule) / -2); margin: calc(var(--rule) / -2); }
 .grid.wide { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
 .grid.loose { gap: 24px; border: 0; background: transparent; }
 .grid.loose > .card { border: var(--rule) solid var(--line); margin: 0; box-shadow: none; }
-.stat { display: flex; flex-direction: column; gap: 10px; }
+.stat { display: flex; flex-direction: column; gap: 6px; }
 .stat .top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
 .stat .top .mono { font-weight: 500; font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--muted); }
 .big { font-family: var(--display); font-size: 40px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
@@ -178,11 +178,11 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 
 /* mood: a status strip of ruled cells */
 .mood { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0; padding: 0; }
-.mood .badge { flex: none; display: grid; place-items: center; width: 64px; background: var(--accent); color: #fff; font-weight: 800; font-size: 26px; }
+.mood .badge { flex: none; display: grid; place-items: center; width: 52px; background: var(--accent); color: #fff; font-weight: 800; font-size: 22px; }
 .mood .badge.ok { background: var(--invert); color: var(--invert-fg); }
-.mood .txt { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1 1 320px; padding: 14px 20px; }
-.mood strong { font-family: var(--display); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
-.mood > .btn { align-self: center; margin: 12px 16px; }
+.mood .txt { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1 1 320px; padding: 9px 16px; }
+.mood strong { font-family: var(--display); font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.mood > .btn { align-self: center; margin: 8px 12px; }
 
 /* chips + table */
 .chips { display: flex; flex-wrap: wrap; gap: 0; }
@@ -194,12 +194,12 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .chipf[aria-pressed="true"] .d { outline: 1.5px solid var(--invert-fg); }
 .table { background: var(--panel); border: var(--rule) solid var(--line); overflow: hidden; }
 .table .scroll { overflow-x: auto; }
-.tr { display: grid; grid-template-columns: minmax(240px, 2.4fr) 130px 170px minmax(130px, 1.1fr) minmax(140px, 1fr) 140px; align-items: center; gap: 12px; padding: 8px 16px; min-height: 62px; border-top: 1px solid var(--line-soft); min-width: 1020px; }
+.tr { display: grid; grid-template-columns: minmax(240px, 2.4fr) 130px 170px minmax(130px, 1.1fr) minmax(140px, 1fr) 140px; align-items: center; gap: 12px; padding: 5px 14px; min-height: 46px; border-top: 1px solid var(--line-soft); min-width: 1020px; }
 .use { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-family: var(--mono); font-size: 11.5px; }
 .use .spark { height: 22px; margin: 0; grid-row: span 2; }
 .use b { font-weight: 600; text-align: right; }
 .use span { color: var(--muted); text-align: right; }
-.tr.th { min-height: 40px; background: var(--panel); border-top: 0; border-bottom: var(--rule) solid var(--line); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
+.tr.th { min-height: 32px; background: var(--panel); border-top: 0; border-bottom: var(--rule) solid var(--line); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
 .tr.th + .tr { border-top: 0; }
 .tr.th span:last-child { text-align: right; }
 .tr:not(.th) { cursor: pointer; transition: background .1s; }
@@ -214,8 +214,10 @@ select.field { appearance: auto; color: var(--text); font-weight: 600; }
 .img-tr { grid-template-columns: minmax(260px, 2.4fr) minmax(160px, 1fr) 120px minmax(160px, 1.2fr) 70px; }
 .nm { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nm > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.nm .t { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.nm b { font-weight: 700; font-size: 15px; }
+.nm .t { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.nm .t > * { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nm .t > b { flex: 0 0 auto; max-width: 100%; }
+.nm b { font-weight: 700; font-size: 14px; }
 .nm .rep { color: var(--muted); font-weight: 600; font-size: 13px; }
 .nm .im { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nm .im .tag, .tag { color: var(--faint); }
@@ -227,7 +229,7 @@ select.field { appearance: auto; color: var(--text); font-weight: 600; }
 .stk { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 1px 7px; border: 1.5px solid var(--line); color: var(--text); text-decoration: none; background: var(--panel-2); }
 a.stk:hover { background: var(--invert); color: var(--invert-fg); }
 .stk i, .sq { width: 8px; height: 8px; background: hsl(var(--h) 70% 48%); flex: none; }
-.pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; font-size: 12px; font-weight: 700; white-space: nowrap; border: 1.5px solid var(--line); background: var(--panel-2); color: var(--text); }
+.pill { justify-self: start; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 7px; font-size: 11.5px; font-weight: 700; white-space: nowrap; border: 1.5px solid var(--line); background: var(--panel-2); color: var(--text); }
 .s-ok::before, .s-warn::before, .s-off::before { content: ""; width: 8px; height: 8px; background: var(--ok); }
 .s-warn::before { background: var(--warn); } .s-off::before { background: var(--off); }
 .s-bad { background: var(--bad); border-color: var(--bad); color: var(--bad-fg); }
@@ -244,7 +246,7 @@ a.port:hover { background: var(--accent); border-color: var(--accent); color: #f
 
 /* events */
 .events { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; }
-.events li { display: grid; grid-template-columns: 70px 12px 1fr; gap: 12px; padding: 8px 0; align-items: start; border-top: 1px solid var(--line-soft); }
+.events li { display: grid; grid-template-columns: 70px 12px 1fr; gap: 12px; padding: 5px 0; align-items: start; border-top: 1px solid var(--line-soft); }
 .events li:first-child { border-top: 0; }
 .events .t { font-family: var(--mono); font-size: 12px; color: var(--muted); padding-top: 1px; }
 .events .d { width: 10px; height: 10px; margin-top: 4px; }
@@ -274,9 +276,9 @@ a.port:hover { background: var(--accent); border-color: var(--accent); color: #f
 .crumbs a { color: var(--accent-ink); text-decoration: none; }
 .chead h1 { margin: 0; font-family: var(--display); font-size: 44px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; overflow-wrap: anywhere; }
 .chead .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); margin-top: 10px; align-items: center; }
-.sum { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; }
+.sum { display: flex; flex-direction: column; gap: 4px; padding: 10px 14px; }
 .sum .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); display: flex; justify-content: space-between; gap: 8px; }
-.sum strong { font-family: var(--display); font-size: 24px; font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.sum strong { font-family: var(--display); font-size: 20px; font-weight: 800; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .sum small { font-size: 12px; color: var(--muted); }
 .checks { display: flex; gap: 3px; align-items: flex-end; height: 28px; }
 .checks i { flex: 1; }
@@ -393,22 +395,22 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .inc-tr { grid-template-columns: minmax(180px, 1.2fr) 190px minmax(0, 2.4fr) 110px; min-width: 760px; }
 /* overview */
 .finds { list-style: none; margin: 0; padding: 0; }
-.finds li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line-soft); }
+.finds li { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 7px 16px; border-top: 1px solid var(--line-soft); }
 .finds li:first-child { border-top: 0; }
 .finds .src { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .finds .src.bad { color: var(--accent-ink); }
 .finds a.go { font-weight: 700; font-size: 13px; color: var(--text); text-decoration: none; white-space: nowrap; }
 .finds a.go:hover { color: var(--accent-ink); }
 .ovl { list-style: none; margin: 0; padding: 0; }
-.ovl a { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(84px, auto); gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--text); text-decoration: none; }
+.ovl a { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(84px, auto); gap: 12px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line-soft); color: var(--text); text-decoration: none; }
 .ovl li:first-child a { border-top: 0; }
 .ovl a:hover b { color: var(--accent-ink); }
 .ovl b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovl .num { font-family: var(--mono); font-size: 12.5px; text-align: right; white-space: nowrap; }
 .ovhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
 .ovhead a { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); text-decoration: none; white-space: nowrap; }
-.bigchart .spark { height: 110px !important; }
-.bigchart .now { font-family: var(--display); font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+.bigchart .spark { height: 72px !important; }
+.bigchart .now { font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
 @media (max-width: 700px) { .finds li { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
 .tel-tr { grid-template-columns: minmax(170px, 1.4fr) 110px 120px 210px minmax(140px, 1fr) 90px; min-width: 900px; }
 .op-tr { grid-template-columns: minmax(0, 2.4fr) 90px 100px 210px; min-width: 640px; }
@@ -1159,11 +1161,11 @@ function viewOverview() {
     <span class="muted">${F.length ? "Each line says where it comes from: Docker's own status, a crash postmortem, your apps' traces, the log patterns, or the host's counters." : `${S.containers.length} containers checked against their status, crashes, log errors${S.tel?.services?.length ? ", app traces" : ""} and host load.`}</span></div></section>`;
   const finds = F.length ? `<div class="card" style="padding:0;border-top:0"><ul class="finds">${F.map(f => `<li><span class="src${f.bad ? " bad" : ""}">${f.src}</span><span>${f.text}</span><a class="go" href="${f.href}"${f.tab ? ` data-tabjump="${f.tab}"` : ""}>${f.go} →</a></li>`).join("")}</ul></div>` : "";
   const hc = M?.host?.spark_cpu || [], hm = M?.host?.spark_mem || [], span = n => `${Math.max(1, n)} min`;
-  const host = `<section class="grid wide" style="margin-top:24px">
+  const host = `<section class="grid wide" style="margin-top:0">
     <figure class="card chart bigchart" style="margin:0"><figcaption><span>Host CPU</span><span class="mono" style="font-size:12px">${span(hc.length)}</span></figcaption>
-      <div class="now">${h ? h.cpu.toFixed(0) + "%" : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${h.cpus} cores · load ${h.load1.toFixed(2)}` : "no samples yet"}</span>${hc.length > 1 ? spark(hc, 110) : ""}</figure>
+      <div class="now">${h ? h.cpu.toFixed(0) + "%" : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${h.cpus} cores · load ${h.load1.toFixed(2)}` : "no samples yet"}</span>${hc.length > 1 ? spark(hc, 72) : ""}</figure>
     <figure class="card chart bigchart" style="margin:0"><figcaption><span>Host memory</span><span class="mono" style="font-size:12px">${span(hm.length)}</span></figcaption>
-      <div class="now">${h ? fmtBytes(h.mem) : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${fmtBytes(h.mem_total)} · network ↓ ${fmtBytes(h.rx)}/s ↑ ${fmtBytes(h.tx)}/s` : ""}</span>${hm.length > 1 ? spark(hm, 110) : ""}</figure></section>`;
+      <div class="now">${h ? fmtBytes(h.mem) : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${fmtBytes(h.mem_total)} · network ↓ ${fmtBytes(h.rx)}/s ↑ ${fmtBytes(h.tx)}/s` : ""}</span>${hm.length > 1 ? spark(hm, 72) : ""}</figure></section>`;
   const busy = S.containers.map(c => [c, metricsOf(c)]).filter(([, m]) => m).sort((a, b) => b[1].cpu - a[1].cpu || b[1].mem - a[1].mem).slice(0, 7);
   const card = (title, link, body) => `<div class="card"><div class="ovhead"><h2>${title}</h2>${link}</div>${body}</div>`;
   const cBusy = card("Busiest containers", `<a href="#containers">All ${S.containers.length} →</a>`, busy.length ? `<ul class="ovl">${busy.map(([c, m]) => `<li><a href="#c/${esc(c.Id)}" data-tabjump="stats"><b>${esc(cname(c))}</b>${mini(m.spark_cpu || [])}<span class="num">${m.cpu.toFixed(1)}% · ${fmtBytes(m.mem)}</span></a></li>`).join("")}</ul>` : `<p class="muted">${M?.available === false ? "cgroup files aren't readable here, so per-container metrics are off." : "Waiting for the first samples (every 10 s)."}</p>`);
@@ -1174,7 +1176,7 @@ function viewOverview() {
   const inc = (S.incidents?.incidents || []).slice(0, 5);
   const cInc = card("Recent crashes", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${i.oom_killed ? "OOM" : "exit " + i.exit_code}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
   const cEv = `<div class="card"><div class="ovhead"><h2>Recent events</h2><span class="muted" style="font-size:12px">live from docker events</span></div><ol class="events" id="events">${eventsHtml()}</ol></div>`;
-  return head + mood + finds + host + `<section class="grid wide" style="margin-top:24px">${cBusy}${cLogs}${cTel}${cInc}</section><section class="grid wide" style="margin-top:24px">${cEv}</section>`;
+  return head + mood + finds + host + `<section class="grid wide" style="margin-top:0">${cBusy}${cLogs}${cTel}${cInc}</section><section class="grid wide" style="margin-top:0">${cEv}</section>`;
 }
 
 /* ---------- telemetry: what apps report over OpenTelemetry (OTLP/HTTP) ---------- */
@@ -1183,8 +1185,8 @@ const pctTxt = r => r == null ? "–" : r === 0 ? "0%" : r < .001 ? "<0.1%" : (r
 const lat = x => `<span class="lat">${ms(x.p50)} · <b${x.p95 > 1000 ? ' class="slow"' : ""}>${ms(x.p95)}</b> · ${ms(x.p99)}</span>`;
 /* Tiny per-minute bar strip for table rows; the last bar and spikes are red, like the big charts. */
 function mini(v) {
-  const n = v.length, max = Math.max(...v) || 1, avg = v.reduce((a, b) => a + b, 0) / (n || 1), bw = 100 / n;
-  return `<svg class="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">${v.map((y, i) => { const h = y ? Math.max(1.5, y / max * 26) : 0; return h ? `<rect class="b${y > avg * 1.8 ? " hot" : ""}" x="${(i * bw).toFixed(2)}" y="${(26 - h).toFixed(1)}" width="${(bw * .7).toFixed(2)}" height="${h.toFixed(1)}"/>` : ""; }).join("")}</svg>`;
+  const n = v.length, max = Math.max(...v) || 1, avg = v.reduce((a, b) => a + b, 0) / (n || 1), bw = 100 / Math.max(n, 30), x0 = 100 - n * bw;
+  return `<svg class="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">${v.map((y, i) => { const h = y ? Math.max(1.5, y / max * 26) : 0; return h ? `<rect class="b${y > avg * 1.8 ? " hot" : ""}" x="${(x0 + i * bw).toFixed(2)}" y="${(26 - h).toFixed(1)}" width="${(bw * .7).toFixed(2)}" height="${h.toFixed(1)}"/>` : ""; }).join("")}</svg>`;
 }
 async function loadTelemetry(name) {
   try {
@@ -1252,10 +1254,10 @@ function serviceDetail(x) {
       <div class="card sum"><span class="k">Typical / slow</span><strong>${ms(x.p50)}</strong><small>1 in 20 slower than ${ms(x.p95)} · 1 in 100 slower than ${ms(x.p99)}</small></div>
       <figure class="card chart" style="margin:0;grid-column:1/-1"><figcaption><span>Requests per minute</span><span class="mono" style="font-size:12px">60 min</span></figcaption>${spark(x.spark, 50)}</figure>
     </section>
-    <h2 style="margin:26px 0 10px">Operations</h2>${ops}
-    <h2 style="margin:26px 0 10px">Failed requests</h2>${ex(x.errors, "No failed requests recently.")}
-    <h2 style="margin:26px 0 10px">Slowest requests</h2>${ex(x.slowest, "Nothing recorded yet.")}
-    <h2 style="margin:26px 0 10px">Log patterns</h2>${lp?.patterns?.length ? `<p class="muted" style="margin:0 0 8px">${lp.lines.toLocaleString()} lines sent over OpenTelemetry, grouped into ${lp.patterns.length} patterns.</p>` + pats(lp.patterns, "") : `<div class="card"><span class="muted">This service sends no logs over OpenTelemetry.</span></div>`}`;
+    <h2 style="margin:16px 0 8px">Operations</h2>${ops}
+    <h2 style="margin:16px 0 8px">Failed requests</h2>${ex(x.errors, "No failed requests recently.")}
+    <h2 style="margin:16px 0 8px">Slowest requests</h2>${ex(x.slowest, "Nothing recorded yet.")}
+    <h2 style="margin:16px 0 8px">Log patterns</h2>${lp?.patterns?.length ? `<p class="muted" style="margin:0 0 8px">${lp.lines.toLocaleString()} lines sent over OpenTelemetry, grouped into ${lp.patterns.length} patterns.</p>` + pats(lp.patterns, "") : `<div class="card"><span class="muted">This service sends no logs over OpenTelemetry.</span></div>`}`;
 }
 
 /* ---------- activity: the audit log ---------- */
