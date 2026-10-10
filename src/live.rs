@@ -18,6 +18,10 @@ use crate::docker::{Demux, Docker, Tick};
 
 /// Socket read timeout for Docker streams and the SSE heartbeat interval.
 const IDLE: Duration = Duration::from_secs(15);
+/// How often an idle stream checks whether the browser has gone, and how long a Docker relay
+/// blocks in one read. Together they bound how long threads outlive a closed tab (~7 s).
+const POLL: Duration = Duration::from_secs(2);
+const RELAY_READ: Duration = Duration::from_secs(5);
 /// Only events that change what the UI shows (health-check `exec_*` events fire every few
 /// seconds per container and are left out by Docker itself):
 /// `filters={"type":["container","image"],"event":["create","start","restart","die","oom","pause","unpause","destroy","health_status","pull","delete","untag","tag"]}`
@@ -41,8 +45,9 @@ pub fn stream(docker: Docker, container: Option<String>, tail: u32) -> impl FnOn
 
         w.write_all(b"retry: 2000\n\n")?;
         let mut batch = String::new();
+        let mut quiet = Duration::ZERO;
         loop {
-            match rx.recv_timeout(IDLE) {
+            match rx.recv_timeout(POLL) {
                 Ok(msg) => {
                     batch.push_str(&msg);
                     while batch.len() < MAX_BATCH {
@@ -53,12 +58,37 @@ pub fn stream(docker: Docker, container: Option<String>, tail: u32) -> impl FnOn
                     }
                     w.write_all(batch.as_bytes())?;
                     batch.clear();
+                    quiet = Duration::ZERO;
                 }
-                Err(RecvTimeoutError::Timeout) => w.write_all(b": ping\n\n")?,
+                Err(RecvTimeoutError::Timeout) => {
+                    if peer_closed(w) {
+                        return Ok(());
+                    }
+                    quiet += POLL;
+                    if quiet >= IDLE {
+                        w.write_all(b": ping\n\n")?;
+                        quiet = Duration::ZERO;
+                    }
+                }
                 // Every producer has ended (e.g. Docker went away); the browser reconnects.
                 Err(RecvTimeoutError::Disconnected) => return Ok(()),
             }
         }
+    }
+}
+
+/// The browser sends nothing on an SSE connection, so a readable socket means FIN (or junk):
+/// a non-blocking peek that returns 0 bytes, or an error, means it has gone.
+fn peer_closed(w: &TcpStream) -> bool {
+    if w.set_nonblocking(true).is_err() {
+        return false;
+    }
+    let r = w.peek(&mut [0u8; 1]);
+    let _ = w.set_nonblocking(false);
+    match r {
+        Ok(0) => true,
+        Ok(_) => false,
+        Err(e) => e.kind() != io::ErrorKind::WouldBlock,
     }
 }
 
@@ -76,7 +106,7 @@ type Handler = Box<dyn FnMut(&mut Vec<u8>, Tick, &mut String) + Send>;
 fn relay(docker: &Docker, path: String, tx: &SyncSender<String>, closed: &Arc<AtomicBool>, mut handle: Handler) {
     let (docker, tx, closed) = (docker.clone(), tx.clone(), closed.clone());
     let spawned = std::thread::Builder::new().stack_size(128 * 1024).spawn(move || {
-        let mut s = match docker.stream(&path, IDLE) {
+        let mut s = match docker.stream(&path, RELAY_READ) {
             Ok(Ok(s)) => s,
             Ok(Err(reply)) => {
                 let msg = serde_json::from_slice::<Value>(&reply.body)
