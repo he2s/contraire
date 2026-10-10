@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod bench;
+mod audit;
 mod cli;
 mod compose;
 mod docker;
@@ -24,6 +25,9 @@ struct App {
     docker: Docker,
     /// Expected `Authorization` header value, if a password is configured.
     auth: Option<String>,
+    audit: audit::Audit,
+    /// The Basic-auth user, when a password is configured.
+    user: Option<String>,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
@@ -60,6 +64,8 @@ fn main() {
         docker,
         auth,
         docs_url: cfg.docs_url,
+        audit: audit::Audit::open(&cfg.audit, |k| std::env::var(k).ok()),
+        user: cfg.password.is_some().then(|| cfg.user.clone()),
         listen: cfg.listen.clone(),
         started: std::time::Instant::now(),
         started_unix: unix_now(),
@@ -68,6 +74,10 @@ fn main() {
     });
 
     eprintln!("contraire: {DISPLAY_NAME} listening on http://{} (docker: {})", cfg.listen, app.docker.describe());
+    match app.audit.path() {
+        Some(p) => eprintln!("contraire: audit log: {}", p.display()),
+        None => eprintln!("contraire: audit log: off"),
+    }
     let loopback = listener.local_addr().is_ok_and(|a| a.ip().is_loopback());
     if !loopback && app.auth.is_none() {
         eprintln!(
@@ -122,6 +132,30 @@ fn proc_cpu_seconds() -> Option<f64> {
     Some(ticks / 100.0)
 }
 
+/// What a mutating request does, for the audit log: (`kind.verb`, target).
+fn audit_subject(req: &Request) -> Option<(String, String)> {
+    if matches!(req.method.as_str(), "GET" | "HEAD") {
+        return None;
+    }
+    let segs: Vec<&str> = req.path.trim_matches('/').split('/').collect();
+    Some(match (req.method.as_str(), segs.as_slice()) {
+        ("POST", ["api", "containers", "prune"]) => ("container.prune".into(), "stopped".into()),
+        ("POST", ["api", "containers", id, verb]) => (format!("container.{verb}"), id.to_string()),
+        ("DELETE", ["api", "containers", id]) => ("container.remove".into(), id.to_string()),
+        ("POST", ["api", "images", "pull"]) => {
+            let image = serde_json::from_slice::<Value>(&req.body)
+                .ok()
+                .and_then(|v| v.get("image")?.as_str().map(|s| s.chars().take(256).collect()))
+                .unwrap_or_default();
+            ("image.pull".into(), image)
+        }
+        ("POST", ["api", "images", "prune"]) => ("image.prune".into(), "dangling".into()),
+        ("DELETE", ["api", "images", id]) => ("image.remove".into(), id.to_string()),
+        ("POST", ["api", "projects", name, verb]) => (format!("project.{verb}"), name.to_string()),
+        _ => return None,
+    })
+}
+
 /// `https://host:port/some/path` → `https://host:port`
 fn origin(url: &str) -> &str {
     let rest = url.find("://").map_or(0, |i| i + 3);
@@ -148,7 +182,38 @@ impl App {
         if !matches!(req.method.as_str(), "GET" | "HEAD") && req.header("x-contraire").is_none() {
             return Response::error(403, "missing X-Contraire header");
         }
-        self.route(req).unwrap_or_else(|e| Response::error(502, &format!("docker: {e}")))
+        let started = std::time::Instant::now();
+        let res = self.route(req).unwrap_or_else(|e| Response::error(502, &format!("docker: {e}")));
+        if let Some((action, target)) = audit_subject(req) {
+            self.audit.record(&self.audit_entry(req, &action, &target, &res, started.elapsed()));
+        }
+        res
+    }
+
+    fn audit_entry(&self, req: &Request, action: &str, target: &str, res: &Response, took: Duration) -> Value {
+        let body: Value = serde_json::from_slice(&res.body).unwrap_or_default();
+        let failed = body.get("failed").and_then(Value::as_array).filter(|f| !f.is_empty());
+        let message = body.get("message").and_then(Value::as_str).map(str::to_string).or_else(|| {
+            failed.map(|f| {
+                f.iter()
+                    .filter_map(|x| Some(format!("{}: {}", x.get("name")?.as_str()?, x.get("message")?.as_str()?)))
+                    .collect::<Vec<_>>()
+                    .join("; ")
+            })
+        });
+        json!({
+            "ts": unix_now(),
+            "action": action,
+            "target": target,
+            "ok": res.status < 300 && failed.is_none(),
+            "status": res.status,
+            "message": message,
+            "ms": took.as_millis() as u64,
+            // Basic auth has exactly one account; without a password nobody is identified.
+            "user": self.user,
+            "ip": req.peer.map(|p| p.to_string()),
+            "client": audit::client_kind(req.header("user-agent")),
+        })
     }
 
     fn route(&self, req: &Request) -> std::io::Result<Response> {
@@ -170,6 +235,15 @@ impl App {
             ("GET", ["api", "info"]) => self.info()?,
             ("GET", ["api", "config"]) => {
                 Response::json(200, json!({ "name": DISPLAY_NAME, "docs": self.docs_url, "version": env!("CARGO_PKG_VERSION") }).to_string())
+            }
+            ("GET", ["api", "audit"]) => {
+                let limit = req.param("limit").and_then(|t| t.parse::<usize>().ok()).unwrap_or(200).clamp(1, 2000);
+                let target = req.param("target").filter(|t| valid_id(t));
+                let body = json!({
+                    "path": self.audit.path().map(|p| p.display().to_string()),
+                    "entries": self.audit.recent(limit, target),
+                });
+                Response::json(200, body.to_string()).with_header("Cache-Control", "no-store")
             }
             ("GET", ["api", "self"]) => Response::json(200, self.telemetry().to_string()).with_header("Cache-Control", "no-store"),
             ("GET", ["api", "events"]) => {
@@ -243,6 +317,7 @@ impl App {
             "listen": self.listen,
             "docker": self.docker.describe(),
             "auth": self.auth.is_some(),
+            "audit": self.audit.path().map(|p| p.display().to_string()),
             "started": self.started_unix,
             "uptime": self.started.elapsed().as_secs(),
             "cpu_seconds": proc_cpu_seconds(),

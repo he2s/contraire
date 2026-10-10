@@ -88,7 +88,7 @@ Beauty comes from typography, spacing and motion, which are cheap in bytes. Size
 
 ## Suggested order
 
-1. **Audit log and API tokens**, the foundation for trust and for agent access.
+1. **Audit log** (done: `src/audit.rs`, Activity page, per-container history) **and API tokens** (next), the foundation for trust and for agent access.
 2. **Client binary and MCP server.**
 3. **Learn section, man page, cheat sheet and copy buttons.**
 4. **Actions.**

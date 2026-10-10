@@ -99,6 +99,12 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
 - **`src/compose.rs`:** project-level start/stop/restart, using compose labels only (no compose CLI).
   - The order comes from `com.docker.compose.depends_on`: dependencies start first and stop last.
   - Containers in the same dependency wave run in parallel via `thread::scope`.
+- **`src/audit.rs`:** the append-only audit log, one JSON line per change.
+  - `App::handle` records every non-GET request after it runs; `audit_subject` maps the route to `kind.verb` plus a target.
+  - Each entry is a single `O_APPEND` write, so threads need no lock.
+  - Past 1 MB the file is renamed to `.1`, which bounds it to about 2 MB on disk.
+  - `/api/audit?limit=&target=` returns entries newest first.
+  - Any new mutating route must be added to `audit_subject`, otherwise it goes unrecorded.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/main.rs`:** holds `App`: the auth check, the CSRF check, and routing by `match` on `(method, path segments)`.
   - Most routes are thin proxies to the Docker API.

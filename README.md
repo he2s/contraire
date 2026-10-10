@@ -8,6 +8,7 @@
 - **Images:** see what's in use; pull, remove and prune.
 - **Learn:** eight illustrated lessons on containers, Linux, networking, data and Compose. They load from this repository, so they add nothing to the binary.
 - **Copy buttons** for every command, ID and code sample.
+- **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
 
 ## Run it
 
@@ -40,6 +41,7 @@ On Fedora/RHEL with SELinux enforcing, add `--security-opt label=disable` (or un
 | `-u, --user` | `CONTRAIRE_USER` | `admin` |
 | `-p, --password-file` | `CONTRAIRE_PASSWORD_FILE` | none (or `CONTRAIRE_PASSWORD`) |
 | `--docs-url` | `CONTRAIRE_DOCS_URL` | this repository's `docs/learn/` |
+| `--audit-file` | `CONTRAIRE_AUDIT_FILE` | `auto`: `$STATE_DIRECTORY`, else `~/.local/state/contraire/audit.jsonl`; `off` disables it |
 | `--max-connections` | `CONTRAIRE_MAX_CONNECTIONS` | `64` |
 
 ## Build

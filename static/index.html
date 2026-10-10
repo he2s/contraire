@@ -200,6 +200,7 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .tr.th span:last-child { text-align: right; }
 .tr:not(.th) { cursor: pointer; transition: background .1s; }
 .tr:not(.th):hover { background: var(--panel-2); box-shadow: inset 4px 0 0 var(--accent); }
+.act-tr { grid-template-columns: 130px minmax(180px, 1.2fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(180px, 1.3fr); }
 .img-tr { grid-template-columns: minmax(260px, 2.4fr) minmax(160px, 1fr) 120px minmax(160px, 1.2fr) 70px; }
 .nm { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nm > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -388,6 +389,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
       <a href="#containers" data-nav="containers"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
       <a href="#stacks" data-nav="stacks"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
       <a href="#images" data-nav="images"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
+      <a href="#activity" data-nav="activity"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
       <a href="#learn" data-nav="learn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
       <a href="#about" data-nav="about"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
     </div>
@@ -472,7 +474,10 @@ const ago = t => {
 const dur = s => s < 60 ? `${s | 0}s` : s < 3600 ? `${s / 60 | 0}m ${s % 60 | 0}s` : s < 86400 ? `${s / 3600 | 0}h ${(s % 3600) / 60 | 0}m` : `${s / 86400 | 0}d ${(s % 86400) / 3600 | 0}h`;
 const clock = t => { const d = new Date(t * 1000), now = new Date(); return d.toDateString() === now.toDateString() ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString([], { weekday: "short" }) + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); };
 
+let auditTimer = 0;
 async function api(path, opts = {}) {
+  // Every change lands in the audit log; refresh the Activity view shortly after.
+  if (opts.method && opts.method !== "GET") { clearTimeout(auditTimer); auditTimer = setTimeout(() => loadAudit(), 300); }
   const r = await fetch(path, { ...opts, headers: { "X-Contraire": "1", "Content-Type": "application/json", ...(opts.headers || {}) } });
   if (!r.ok) {
     let msg = r.statusText;
@@ -770,6 +775,69 @@ function viewImages() {
 
 function selfCpu() { const h = S.selfHist; return h.length ? h[h.length - 1].cpu : null; }
 
+/* ---------- activity: the audit log ---------- */
+const VERB = {
+  "container.start": "Started", "container.stop": "Stopped", "container.restart": "Restarted", "container.pause": "Paused",
+  "container.unpause": "Resumed", "container.kill": "Killed", "container.remove": "Removed", "container.prune": "Pruned stopped containers",
+  "image.pull": "Pulled image", "image.remove": "Removed image", "image.prune": "Pruned dangling images",
+  "project.start": "Started stack", "project.stop": "Stopped stack", "project.restart": "Restarted stack",
+};
+const findContainer = t => S.containers.find(c => c.Id === t || cname(c) === t || (t.length >= 12 && c.Id.startsWith(t)));
+function auditTarget(e) {
+  const [kind] = e.action.split(".");
+  if (kind === "container" && !/prune/.test(e.action)) {
+    const c = findContainer(e.target);
+    return c ? `<a class="stk" href="#c/${esc(c.Id)}">${esc(cname(c))}</a>` : `<span class="mono muted">${esc(/^[0-9a-f]{64}$/.test(e.target) ? e.target.slice(0, 12) : e.target)}</span>`;
+  }
+  if (kind === "project") return `<a class="stk" href="#stacks/${encodeURIComponent(e.target)}" style="--h:${hue(e.target)}"><i></i>${esc(e.target)}</a>`;
+  if (e.action === "image.remove") return `<span class="mono">${esc(e.target.replace("sha256:", "").slice(0, 12))}</span>`;
+  return `<span class="mono">${esc(e.target)}</span>`;
+}
+const auditWho = e => `<b>${esc(e.user || "anonymous")}</b><span class="muted" style="font-size:12px;display:block">${esc(e.client || "")}${e.ip ? " · " + esc(e.ip) : ""}</span>`;
+const auditResult = e => `<span class="pill ${e.ok ? "s-ok" : "s-bad"}">${e.ok ? "Done" : "Failed"}</span>${e.message ? `<span class="muted" style="font-size:12px;display:block;margin-top:4px">${esc(e.message)}</span>` : ""}`;
+
+async function loadAudit() {
+  try {
+    S.audit = await api("/api/audit?limit=300");
+    if (S.view === "activity") render();
+    const h = $("#c-history"); if (h) h.innerHTML = historyHtml();
+  } catch {}
+}
+
+function viewActivity() {
+  const A = S.audit;
+  const head = `<header class="ph"><div><div class="kick">audit log${A?.path ? ` · <span class="mono" style="text-transform:none;letter-spacing:0;font-weight:500">${esc(A.path)}</span>` : ""}</div><h1>Activity</h1></div></header>`;
+  if (!A) return head + `<div class="card"><div class="skel" style="width:50%"></div></div>`;
+  if (!A.path) return head + `<section class="card mood"><span class="badge" aria-hidden="true">!</span><div class="txt"><strong>The audit log is off</strong>
+    <span class="muted">Start ${esc(S.cfg?.name || "the dashboard")} with <code>--audit-file /path/audit.jsonl</code> (or set <code>CONTRAIRE_AUDIT_FILE</code>) to record who changed what. In Docker, mount a volume for it.</span></div></section>`;
+  const es = A.entries;
+  const intro = `<section class="card mood"><span class="badge ok" aria-hidden="true">✓</span><div class="txt"><strong>Every change, on the record</strong>
+    <span class="muted">Each start, stop, removal, pull and stack action through this dashboard is written to an append-only log: who, when, from where, and whether it worked. Only Docker actions taken here are listed.</span></div></section>`;
+  if (!es.length) return head + intro + `<div class="table"><div class="empty">${BOAT()}<strong>Nothing changed yet</strong><span class="muted">Actions appear here the moment they happen.</span></div></div>`;
+  const ok = es.filter(e => e.ok).length;
+  return head + intro + `
+    <section class="grid">
+      <div class="card stat"><div class="top"><span>Recorded</span><span class="mono">last ${es.length}</span></div><div class="row"><span class="big">${es.length}</span><span>actions</span></div></div>
+      <div class="card stat"><div class="top"><span>Failed</span></div><div class="row"><span class="big${es.length - ok ? " red" : ""}">${es.length - ok}</span><span>of ${es.length}</span></div></div>
+      <div class="card stat"><div class="top"><span>Latest</span></div><div class="row"><span class="big" style="font-size:30px">${ago(es[0].ts)}</span></div><div class="foot2">${esc(VERB[es[0].action] || es[0].action)} · ${esc(es[0].user || "anonymous")}</div></div>
+    </section>
+    <div class="table"><div class="scroll"><div class="tr th act-tr"><span>When</span><span>Action</span><span>Target</span><span>Who</span><span>Result</span></div>
+    ${es.map(e => `<div class="tr act-tr" style="cursor:default">
+      <span><span class="mono" style="font-size:12.5px">${esc(clock(e.ts))}</span><span class="muted" style="font-size:12px;display:block">${ago(e.ts)}</span></span>
+      <span><b>${esc(VERB[e.action] || e.action)}</b><span class="muted mono" style="font-size:11.5px;display:block">${esc(e.action)} · ${e.ms} ms</span></span>
+      <span>${auditTarget(e)}</span><span>${auditWho(e)}</span><span>${auditResult(e)}</span></div>`).join("")}</div></div>`;
+}
+
+function historyHtml() {
+  const c = S.containers.find(x => x.Id === S.open);
+  if (!S.audit) return `<span class="muted">Loading…</span>`;
+  if (!S.audit.path) return `<span class="muted">The audit log is off, so no history is kept.</span>`;
+  const mine = S.audit.entries.filter(e => e.action.startsWith("container.") && c && findContainer(e.target)?.Id === c.Id).slice(0, 12);
+  if (!mine.length) return `<span class="muted">No actions on this container through the dashboard yet.</span>`;
+  return `<ol class="events">${mine.map(e => `<li><span class="t">${esc(clock(e.ts))}</span><span class="d" style="background:${e.ok ? "var(--ok)" : "var(--bad)"}"></span>
+    <span><strong>${esc(VERB[e.action] || e.action)}</strong> by ${esc(e.user || "anonymous")} <span class="muted">(${esc(e.client)}${e.ip ? " · " + esc(e.ip) : ""})</span>${e.ok ? "" : ` · <span style="color:var(--accent-ink)">${esc(e.message || "failed")}</span>`}</span></li>`).join("")}</ol>`;
+}
+
 function viewAbout() {
   const s = S.self;
   if (!s) return `<header class="ph"><div><div class="kick">self-telemetry</div><h1>This dashboard</h1></div></header><div class="card"><div class="skel" style="width:50%"></div></div>`;
@@ -781,6 +849,7 @@ function viewAbout() {
     ["Platform", `<span class="mono">${esc(s.os)} / ${esc(s.arch)}</span>`],
     ["Listening on", `<span class="mono">${esc(s.listen)}</span> ${s.auth ? '<span class="pill s-ok" style="height:22px">password on</span>' : '<span class="pill s-bad" style="height:22px">no password</span>'}`],
     ["Docker endpoint", `<span class="mono">${esc(s.docker)}</span>`],
+    ["Audit log", s.audit ? `<span class="mono grow">${esc(s.audit)}</span>${copyBtn(s.audit, "Copy path")}` : '<span class="pill s-off">off</span>'],
     ["Started", `${esc(new Date(s.started * 1000).toLocaleString())} · up ${dur(s.uptime)}`],
     ["Open files", `<span class="mono">${s.fds ?? "–"}</span>`],
     ["Connections now", `<span class="mono">${s.connections}</span> <span class="muted">(each open browser tab holds one live stream)</span>`],
@@ -827,7 +896,8 @@ function viewContainer() {
         </div>
       </div>
       <div id="tab-stats" ${S.tab === "stats" ? "" : "hidden"}><div class="grid wide" id="charts">${chartsHtml(S.hist[S.hist.length - 1] || null)}</div></div>
-      <div id="tab-details" ${S.tab === "details" ? "" : "hidden"}><div class="card" id="d-info"><div class="skel" style="width:50%"></div></div></div>
+      <div id="tab-details" ${S.tab === "details" ? "" : "hidden"} style="display:flex;flex-direction:column;gap:24px"><div class="card" id="d-info"><div class="skel" style="width:50%"></div></div>
+        <div class="card"><h2>History through this dashboard</h2><div id="c-history" style="margin-top:6px">${historyHtml()}</div></div></div>
       <div id="tab-env" ${S.tab === "env" ? "" : "hidden"}><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2>Environment</h2><button class="btn sm" id="d-envbtn">Reveal</button></div><pre class="envlist muted" id="d-env">Hidden, because environment variables often contain passwords and API keys.</pre></div></div>
     </section>`;
 }
@@ -1237,7 +1307,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity"].includes(v) ? v : "containers";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
@@ -1248,6 +1318,7 @@ function route() {
   if (view === "learn") { Lr.slug = arg; return renderLearn(arg); }
   render();
   if (view === "container") loadDetail();
+  if (view === "activity" || view === "container") loadAudit();
   window.scrollTo({ top: 0 });
 }
 
@@ -1272,7 +1343,7 @@ function render(soft) {
     if (c) $("#c-head").innerHTML = containerHead(c);
     return;
   }
-  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, container: viewContainer }[S.view]();
+  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, container: viewContainer }[S.view]();
   // Keep the search box's focus and caret across re-renders, so typing isn't interrupted.
   const q = document.activeElement?.id === "q" ? $("#q") : null;
   const pos = q?.selectionStart;

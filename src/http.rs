@@ -15,6 +15,8 @@ pub struct Request {
     pub query: String,
     headers: Vec<(String, String)>,
     pub body: Vec<u8>,
+    /// Client address, for the audit log.
+    pub peer: Option<std::net::IpAddr>,
 }
 
 impl Request {
@@ -118,6 +120,7 @@ fn read_request(r: &mut impl BufRead) -> io::Result<Option<Request>> {
         query: query.to_string(),
         headers: Vec::new(),
         body: Vec::new(),
+        peer: None,
     };
 
     loop {
@@ -189,12 +192,16 @@ pub fn serve(stream: TcpStream, handler: impl Fn(&Request) -> Response) {
     let _ = stream.set_read_timeout(Some(Duration::from_secs(30)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(30)));
     let _ = stream.set_nodelay(true);
+    let peer = stream.peer_addr().ok().map(|a| a.ip());
     let Ok(mut writer) = stream.try_clone() else { return };
     let mut reader = BufReader::new(stream);
 
     loop {
         let req = match read_request(&mut reader) {
-            Ok(Some(req)) => req,
+            Ok(Some(mut req)) => {
+                req.peer = peer;
+                req
+            }
             Ok(None) => return,
             Err(e) if e.kind() == io::ErrorKind::InvalidData => {
                 let _ = write_response(&mut writer, Response::error(400, &e.to_string()), false, false);
