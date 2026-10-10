@@ -252,6 +252,17 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
+    fn bench_http_parse_request() {
+        let raw = b"GET /api/containers HTTP/1.1\r\nHost: pi.local:8083\r\nUser-Agent: Mozilla/5.0 (X11; Linux x86_64)\r\n\
+Accept: */*\r\nAccept-Language: en-US,en;q=0.9\r\nAccept-Encoding: gzip, deflate\r\nX-Contraire: 1\r\n\
+Connection: keep-alive\r\nReferer: http://pi.local:8083/\r\n\r\n";
+        crate::bench::run("http: parse request", raw.len(), || {
+            std::hint::black_box(read_request(&mut &raw[..]).unwrap());
+        });
+    }
+
+    #[test]
     fn base64_matches_rfc4648() {
         assert_eq!(base64(b""), "");
         assert_eq!(base64(b"f"), "Zg==");

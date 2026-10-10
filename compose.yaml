@@ -1,0 +1,21 @@
+# Run the dashboard itself with Compose:  docker compose up -d
+# Then open http://<host>:8083
+services:
+  contraire:
+    build: .
+    image: contraire:latest
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    volumes:
+      # Control of the Docker socket is root-equivalent on this host.
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Strongly recommended when the port is reachable from your network:
+      # CONTRAIRE_PASSWORD: change-me
+      CONTRAIRE_LISTEN: 0.0.0.0:8083
+    mem_limit: 32m
+    # Fedora/RHEL (SELinux enforcing) blocks containers from the Docker socket.
+    # This lifts SELinux confinement for this one container:
+    # security_opt:
+    #   - label=disable

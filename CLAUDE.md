@@ -42,7 +42,18 @@ cargo clippy --release
 cargo check --release --target aarch64-unknown-linux-gnu        # Pi 3, 64-bit OS
 cargo check --release --target armv7-unknown-linux-gnueabihf    # Pi 3, 32-bit Raspberry Pi OS
 ./target/release/contraire -l 127.0.0.1:18080      # run locally (needs docker socket access); --help lists all options
+cargo test --release -- --ignored bench_ --test-threads=1 --nocapture   # micro-benchmarks: ns/op, allocs/op, MB/s
+scripts/footprint.sh [--quick] [--perf]       # size/RSS/CPU/threads vs. budgets against the real daemon; non-zero on breach
+scripts/dist.sh                               # cross-compile linux amd64/arm64/armv7 + windows into ./dist (Docker + zig)
+docker build -t contraire .                   # FROM scratch runtime image (~600 KB); --platform linux/arm64 for a Pi
 ```
+
+**Performance work:**
+- Run the micro-benchmarks and `scripts/footprint.sh` before and after every change, and quote the numbers.
+- Benchmarks are `#[ignore]` tests named `bench_*`, next to the code they measure.
+- `src/bench.rs` installs a counting allocator in test builds.
+- Hot paths must stay at 0 allocs/op: relaying log bytes, dechunking, and the SSE write loop. Per-event JSON parsing (events, stats) is allowed to allocate because it runs at most once per second per stream.
+- `/api/containers` speed is bounded by Docker itself, at about 100 ms for 30 containers.
 
 Default listen address: `0.0.0.0:8083`.
 

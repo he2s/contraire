@@ -175,8 +175,11 @@ fn logs() -> Handler {
                 started = true;
             }
             out.push_str("data: ");
-            // A bare \r would end the SSE line early.
-            out.extend(String::from_utf8_lossy(line).chars().filter(|&c| c != '\r'));
+            // Fast path: valid UTF-8 without a bare \r (which would end the SSE line early).
+            match std::str::from_utf8(line) {
+                Ok(t) if !line.contains(&b'\r') => out.push_str(t),
+                _ => out.extend(String::from_utf8_lossy(line).chars().filter(|&c| c != '\r')),
+            }
             out.push('\n');
         });
         if started {
@@ -222,6 +225,52 @@ pub fn summarize_stats(s: &Value) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore]
+    fn bench_live_logs_to_sse() {
+        let line = b"2026-10-10T09:50:03.701695991Z GET /api/items 200 1.2ms user=42 trace=4bf92f3577b34da6a3ce929d0e0e47\n";
+        let text: Vec<u8> = line.iter().copied().cycle().take(1 << 20).collect();
+        let mut h = logs();
+        let (mut buf, mut out) = (Vec::with_capacity(16384), String::with_capacity(32768));
+        crate::bench::run("live: logs 1 MB -> SSE", text.len(), || {
+            for piece in text.chunks(8192) {
+                buf.extend_from_slice(piece);
+                h(&mut buf, Tick::Data, &mut out);
+                out.clear();
+            }
+        });
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_live_stats_sample() {
+        let sample = include_str!("../tests/fixtures/stats.json").replace('\n', "");
+        let mut buf = Vec::with_capacity(8192);
+        let mut out = String::with_capacity(1024);
+        let mut h = stats();
+        crate::bench::run("live: stats sample -> SSE", sample.len(), || {
+            buf.extend_from_slice(sample.as_bytes());
+            buf.push(b'\n');
+            h(&mut buf, Tick::Data, &mut out);
+            out.clear();
+        });
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_live_event() {
+        let ev = br#"{"status":"start","id":"558a276b005d","from":"busybox","Type":"container","Action":"start","Actor":{"ID":"558a276b005d41a7ae92515cad48edd20fbb3ab436104b21f383f00d0c54b62a","Attributes":{"com.docker.compose.project":"shop","image":"busybox","name":"ct-live"}},"scope":"local","time":1791625803,"timeNano":1791625803701695991}"#;
+        let mut buf = Vec::with_capacity(4096);
+        let mut out = String::with_capacity(1024);
+        let mut h = events();
+        crate::bench::run("live: docker event -> SSE", ev.len(), || {
+            buf.extend_from_slice(ev);
+            buf.push(b'\n');
+            h(&mut buf, Tick::Data, &mut out);
+            out.clear();
+        });
+    }
 
     #[test]
     fn drains_complete_lines_only() {

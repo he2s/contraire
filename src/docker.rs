@@ -350,6 +350,54 @@ impl Demux {
 mod tests {
     use super::*;
 
+    /// ~1 MB of log text in 100-byte lines, as Docker's multiplexed frames.
+    fn muxed_logs() -> Vec<u8> {
+        let line = b"2026-10-10T09:50:03.701695991Z GET /api/items 200 1.2ms user=42 trace=4bf92f3577b34da6a3ce929d0e0e47\n";
+        let mut out = Vec::new();
+        while out.len() < 1 << 20 {
+            out.extend_from_slice(&[1, 0, 0, 0]);
+            out.extend_from_slice(&(line.len() as u32).to_be_bytes());
+            out.extend_from_slice(line);
+        }
+        out
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_docker_dechunk_stream() {
+        let body = muxed_logs();
+        let mut chunked = Vec::new();
+        for c in body.chunks(4096) {
+            chunked.extend_from_slice(format!("{:x}\r\n", c.len()).as_bytes());
+            chunked.extend_from_slice(c);
+            chunked.extend_from_slice(b"\r\n");
+        }
+        let mut s = Stream { conn: Box::new(Empty), raw: Vec::with_capacity(16384), state: Chunk::Size };
+        let mut out = Vec::with_capacity(16384);
+        crate::bench::run("docker: dechunk 1 MB (8K reads)", body.len(), || {
+            s.state = Chunk::Size;
+            for piece in chunked.chunks(8192) {
+                s.raw.extend_from_slice(piece);
+                s.decode(&mut out).unwrap();
+                out.clear();
+            }
+        });
+    }
+
+    #[test]
+    #[ignore]
+    fn bench_docker_demux_logs() {
+        let body = muxed_logs();
+        let mut out = Vec::with_capacity(16384);
+        crate::bench::run("docker: demux 1 MB (8K reads)", body.len(), || {
+            let mut d = Demux::default();
+            for piece in body.chunks(8192) {
+                d.feed(piece, &mut out);
+                out.clear();
+            }
+        });
+    }
+
     #[test]
     fn parses_chunked() {
         let raw = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n4\r\nWiki\r\n5\r\npedia\r\n0\r\n\r\n".to_vec();

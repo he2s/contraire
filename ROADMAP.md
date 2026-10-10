@@ -62,6 +62,7 @@ Access to the Docker socket is root-equivalent, so running bash written by an ag
 
 These are listed in `CLAUDE.md` and follow its principles: streaming, bounded memory, append-only files and columnar layouts.
 
+- **Server-side cache of `/containers/json`, shared by all tabs.** Measured: Docker needs ~100 ms to list 30 containers, while the server alone answers ~12k req/s. Every open tab currently triggers its own Docker call on each event. Swap snapshots atomically, without locks.
 - Prometheus `/metrics` endpoint
 - OTLP endpoint
 - log collection
@@ -72,6 +73,8 @@ These are listed in `CLAUDE.md` and follow its principles: streaming, bounded me
 - highly interactive drill-down UI
 
 ## 6. Budgets (enforced on every automated build)
+
+**Done:** `scripts/footprint.sh` checks these against a live daemon and exits non-zero on a breach. `bench_*` tests report ns/op and allocs/op. Not yet wired into an automated build.
 
 | Budget | Limit |
 |---|---|
