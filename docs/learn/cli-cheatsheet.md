@@ -38,7 +38,7 @@ contraire info                                         # check: host, Docker ver
 contraire ps                                           # every container, status in plain words
 contraire inspect web                                  # health, exit code explained, ports, mounts, compose deps
 contraire top                                          # CPU, memory, network and disk per container, busiest first
-contraire stacks                                       # compose stacks and which services need attention
+contraire stacks                                       # Compose stacks and which services need attention
 contraire events                                       # starts, stops, crashes and health changes, last hour
 contraire events --since 15                            # … only the last 15 minutes
 contraire ps --json                                    # raw JSON, for scripts and jq
@@ -58,9 +58,9 @@ contraire incident <id>                                # postmortem: why it died
 contraire logs web -n 1000 | grep -i error             # only the lines that mention errors
 ```
 
-## Your apps' own view: OpenTelemetry
+## Telemetry: your apps' own view
 
-Apps with an OpenTelemetry SDK, or a Collector, send to the dashboard's own address over OTLP/HTTP. It turns traces into requests, errors and latency per service, and logs into patterns.
+Apps with an OpenTelemetry SDK, or a Collector, send to the dashboard's own address over OTLP/HTTP. With a password set, senders need a **read** token (`OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20ctr_...`). It turns traces into requests, errors and latency per service, and logs into patterns.
 
 ```sh
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://pi.local:8083   # on the app's container
@@ -72,7 +72,7 @@ export OTEL_EXPORTER_OTLP_COMPRESSION=none                 # gzip isn't supporte
 contraire services                                     # every service: req/min, errors, p50 · p95 · p99
 contraire service checkout                             # its operations, failed and slowest requests, log patterns
 contraire export telemetry --csv > telemetry.csv       # per service and minute, the last hour
-contraire export metrics > metrics.jsonl               # CPU, memory, network, disk per container
+contraire export metrics > metrics.jsonl               # CPU, memory, network, disk per container and minute, the last 24 h
 duckdb -c "COPY (FROM 'telemetry.csv') TO 'telemetry.parquet'"   # Parquet, if you have DuckDB
 ```
 
@@ -85,7 +85,7 @@ contraire restart web                                  # stop, then start again
 contraire stop web                                     # stop; the service is down until started
 contraire start web                                    # start a stopped container
 contraire pause web                                    # freeze it in place (unpause to continue)
-contraire stack shop restart                           # a whole compose stack, in dependency order
+contraire stack shop restart                           # a whole Compose stack, in dependency order
 contraire stack shop stop                              # dependencies stop last
 ```
 
@@ -109,7 +109,8 @@ Then just ask, in your own words:
 | `list_containers`, `list_stacks` | See everything, with plain-language status |
 | `inspect_container` | Health streak, exit code explained, ports, mounts |
 | `container_logs` | Last lines, optionally filtered by a word |
-| `log_patterns`, `incidents` | The whole log as patterns; crash postmortems |
+| `log_patterns`, `incidents` | The whole log as patterns; incident postmortems |
+| `service_health` | Telemetry: requests, errors and latency per service, failed and slowest requests |
 | `top_containers`, `container_metrics` | Resource use now, and now/peak/avg over 1 h or 24 h |
 | `container_stats`, `host_info` | Live CPU, memory, network, host facts |
 | `recent_events`, `activity` | What happened, and who changed what |
@@ -117,20 +118,22 @@ Then just ask, in your own words:
 
 ## Sessions and the Claude Code skill
 
-A session is a folder that Claude Code works in. It holds the skill, the server address, a log of every command, and a journal.
+A session is a folder that Claude Code works in. It holds the skill and its reference, a `PROJECT.md` for facts about your setup, the server address, a log of every command, and a journal.
 
 ```sh
-contraire init ops-pi                                  # new folder: skill, config, action log, SESSION.md, git repo
+contraire init ops-pi                                  # new folder: skill, reference, PROJECT.md, config, action log, SESSION.md, git repo
 cd ops-pi && claude                                    # Claude picks up the skill and the folder's settings
 cat .contraire/actions.log                             # every command, MCP tool call and result, with time
 cat SESSION.md                                         # Claude's journal: checked, found, changed, next
-contraire init ops-pi --skill-from skills/contraire/SKILL.md   # offline: copy the skill from a local file
+contraire init ops-pi --skill-from skills/contraire/SKILL.md   # offline: copy the skill (and reference.md next to it) from local files
 ```
 
 | File | What it is |
 |---|---|
 | `.claude/skills/contraire/SKILL.md` | How Claude triages, reads logs and verifies changes |
-| `.claude/settings.json` | Read-only commands pre-approved; changes still ask you |
+| `.claude/skills/contraire/reference.md` | General Docker, Compose and Linux facts, and the rules for changing things |
+| `PROJECT.md` | Empty at first: what this host is for, what's normal, what not to touch. Fill it in |
+| `.claude/settings.json` | Every read-only command pre-approved; changes still ask you |
 | `.contraire/session.json` | Server address and log location |
 | `.contraire/token` | The API token: mode 0600, ignored by git, never printed |
 | `.contraire/actions.log` | Written by the CLI itself, not by Claude |
@@ -139,7 +142,7 @@ contraire init ops-pi --skill-from skills/contraire/SKILL.md   # offline: copy t
 To use the skill everywhere instead of in one folder, copy it to your user skills:
 
 ```sh
-mkdir -p ~/.claude/skills/contraire && curl -fsSL https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/SKILL.md -o ~/.claude/skills/contraire/SKILL.md   # install the skill for every project
+mkdir -p ~/.claude/skills/contraire && cd ~/.claude/skills/contraire && curl -fsSLO https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/SKILL.md -fsSLO https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/reference.md   # install the skill for every project
 ```
 
 | Problem | Fix |
@@ -153,9 +156,9 @@ mkdir -p ~/.claude/skills/contraire && curl -fsSL https://raw.githubusercontent.
 
 | Scope | Allows |
 |---|---|
-| `read` | Look at everything: containers, logs, stats, images, stacks |
+| `read` | Look at everything: containers, logs, metrics, images, stacks, incidents, telemetry; send OpenTelemetry data |
 | `operate` | Also start, stop, restart, pause and stack actions |
-| `admin` | Also remove, pull, prune, the audit log and managing tokens |
+| `admin` | Also pull, remove and prune, read the audit log, manage tokens |
 
 ```sh
 contraire activity                                     # who changed what (admin token)
@@ -171,7 +174,8 @@ contraire                                              # serve on all interfaces
 contraire -l 9000                                      # another port
 contraire -l 127.0.0.1:8083                            # only this machine
 contraire -p /etc/contraire/password                   # require a password in the browser
-contraire --audit-file off                             # no audit log (also disables tokens)
+contraire --audit-file off                             # no state folder: no audit log, tokens, incidents or saved metrics
+contraire --otlp-forward http://collector:4318         # also pass every OpenTelemetry batch on
 contraire --help                                       # every option, with its environment variable
 ```
 
@@ -193,7 +197,7 @@ One file for every role: dashboard, client, MCP server. Releases are built by Gi
 
 ```sh
 contraire --version                                    # which version you have
-CONTRAIRE_VERSION=v0.1.1 sh install.sh                 # install a specific release
+CONTRAIRE_VERSION=v0.1.3 sh install.sh                 # install a specific release
 curl -fsSLO https://github.com/he2s/contraire/releases/latest/download/contraire-linux-arm64   # download by hand
 curl -fsSL https://github.com/he2s/contraire/releases/latest/download/SHA256SUMS | sha256sum -c --ignore-missing   # …and verify it
 cargo build --release                                  # build it yourself (compiles on a Pi 3, too)

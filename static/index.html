@@ -156,7 +156,7 @@ main { min-width: 0; padding: 18px clamp(16px, 1.8vw, 32px) 40px; display: flex;
 /* cards */
 .card { background: var(--panel); border: var(--rule) solid var(--line); padding: 12px 16px; }
 .card h2 { margin: 0; font-family: var(--display); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-/* Ruled grid: each cell's outline overlaps its neighbours', giving single 2px rules without empty filler cells. */
+/* Ruled grid: each cell's outline overlaps its neighbors', giving single 2px rules without empty filler cells. */
 .grid { display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); padding: calc(var(--rule) / 2); }
 .grid > .card { border: 0; outline: var(--rule) solid var(--line); outline-offset: calc(var(--rule) / -2); margin: calc(var(--rule) / -2); }
 .grid.wide { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
@@ -699,7 +699,7 @@ function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
    The page ships gzip-compressed, so this text costs ~1/3 of its size in the binary. */
 const HELP = {
   "containers": ["Containers", "Every container on this Docker host. Status, CPU and memory update live: Docker <em>pushes</em> events to the page instead of the page polling. Click a row for logs, patterns, history and details."],
-  "stacks": ["Stacks", "Docker Compose projects, recognised from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
+  "stacks": ["Stacks", "Docker Compose projects, recognized from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
   "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
   "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
   "overview": ["Overview", "Every signal this dashboard collects, on one page: Docker's own status, CPU and memory from cgroups and <code>/proc</code>, errors mined from every log, crash postmortems and, if your apps send them, OpenTelemetry traces. The list at the top is plain rules over those numbers, never a guess, and each line names its source."],
@@ -739,7 +739,7 @@ const HELP = {
   "error patterns": ["Error patterns", "Patterns from lines mentioning errors, panics, exceptions, refusals or failures, with how often each appeared before the crash."],
   "new since it started": ["New since it started", "Patterns that first appeared more than two minutes after the container started: the messages that weren't there when it was healthy."],
   "process": ["Process", "Facts about the running dashboard process, from <code>/proc/self</code> and its own counters."],
-  "new token": ["New token", "Give it a name you'll recognise in Activity (e.g. <code>claude-laptop</code>), the smallest scope that does the job, and an expiry. Agents usually need <code>operate</code>: they can restart things but never delete them."],
+  "new token": ["New token", "Give it a name you'll recognize in Activity (e.g. <code>claude-laptop</code>), the smallest scope that does the job, and an expiry. Agents usually need <code>operate</code>: they can restart things but never delete them."],
   "details": ["Details", "Full ID, image, command, ports, networks, mounts, restart policy and, for Compose containers, the stack, service, dependencies and compose file."],
   "environment": ["Environment", "Environment variables often hold passwords and API keys, so they stay hidden until you reveal them. Anyone with access to this dashboard can, though."],
   "manage": ["This dashboard", "One file of under a megabyte, about 3 MB of memory, no dependencies. The sidebar boxes show the host and the dashboard's own cost live."],
@@ -810,7 +810,7 @@ const L = (c, k) => c.Labels?.[k];
 const cname = c => (c.Names?.[0] || c.Id.slice(0, 12)).replace(/^\//, "");
 const HEALTH = /\((healthy|unhealthy|health: starting)\)/;
 const health = c => (c.Status.match(HEALTH) || [])[1] || null;
-/* One status vocabulary everywhere: label, colour class, dot colour, filter bucket. */
+/* One status vocabulary everywhere: label, color class, dot color, filter bucket. */
 function status(c) {
   if (S.busy.has(c.Id)) return { label: "Working…", cls: "s-busy", dot: "var(--accent)", bucket: "running", busy: true };
   const h = health(c);
@@ -896,7 +896,7 @@ function viewContainers() {
   const counts = { all: cs.length, running: n("running"), attention: n("attention"), paused: n("paused"), stopped: n("stopped") };
   const troubled = cs.filter((c, i) => sts[i].bucket === "attention");
   const anyHealth = cs.some(c => health(c));
-  const mood = !cs.length ? ["An empty harbour", "No containers yet. Open Learn to start your first one in under a minute."]
+  const mood = !cs.length ? ["An empty harbor", "No containers yet. Open Learn to start your first one in under a minute."]
     : troubled.length ? ["Choppy waters", `${counts.running} of ${counts.all} containers are up. ${troubled.slice(0, 3).map(c => `${cname(c)} is ${status(c).label.toLowerCase()}`).join(", ")}${troubled.length > 3 ? ` and ${troubled.length - 3} more` : ""}.`]
     : counts.running === counts.all ? ["Smooth sailing", `All ${counts.all} containers are up${anyHealth ? " and every health check is passing" : ""}.`]
     : ["Calm waters", `${counts.running} of ${counts.all} containers are up; the rest were stopped on purpose.`];

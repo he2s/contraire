@@ -33,7 +33,7 @@ docker exec sleeper ps             # inside, it is PID 1 and alone
 docker run -d --memory 128m --cpus 0.5 nginx:alpine
 ```
 
-If a container exceeds its memory limit, the kernel stops it, and it exits with code **137**. The detail panel calls that "killed (out of memory or force-stopped)".
+If a container exceeds its memory limit, the kernel stops it, and it exits with code **137**. The container's page calls that "killed: out of memory or force-stopped".
 
 ## 3. Overlay filesystems: the layers, stacked
 

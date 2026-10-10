@@ -1,4 +1,4 @@
-//! OpenTelemetry (OTLP/HTTP) receiver: summarise traces, mine logs, count metrics, forward.
+//! OpenTelemetry (OTLP/HTTP) receiver: summarize traces, mine logs, count metrics, forward.
 //!
 //! Applications or a collector send to `/v1/traces`, `/v1/logs`, `/v1/metrics` on the
 //! dashboard's port (protobuf or JSON, uncompressed). Nothing is stored raw. Per service

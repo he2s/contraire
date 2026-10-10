@@ -8,36 +8,30 @@ contraire is a single-binary Docker manager with a web UI. It is built to run on
 
 ## Priorities (in this order)
 
-1. **Low memory footprint.** RSS stays in the low single-digit MB at idle, and the 1 GB Pi has to be able to compile the crate.
+1. **Low memory footprint.** RSS stays around 4 MB at idle plus about 0.2 MB per followed container (7 MB with 28), within the budget `footprint.sh` enforces, and the 1 GB Pi has to be able to compile the crate.
 2. **Low CPU.** Idle work stays close to zero, and polling is driven by the browser only while a tab is visible.
-3. **Small disk.** Keep both the binary (~450 KB today) and the dependency tree small.
+3. **Small disk.** Keep both the binary (about 1.2 MB today, budget 1.25 MB) and the dependency tree small.
 4. **Beautiful UI.** It must stay polished, not "good enough for an admin tool". Both light and dark themes, smooth transitions, no jank.
 
 When there is a choice, take the one that does this:
 - **No allocations on hot paths.** Reuse buffers, borrow `&str`/`&[u8]` slices out of the input, and parse in place rather than building owned trees when only a few fields are needed.
-- **No locks.** Prefer atomics, per-thread state, or single-writer designs. The only shared state today is an `AtomicUsize` connection counter.
+- **No locks.** Prefer atomics, per-thread state, or single-writer designs. The deliberate exceptions are rarely written and named below: the token table (`RwLock`) and logwatch's snapshot and registry `Mutex`es. Metrics and OTLP aggregation are lock-free.
 - **Cache-friendly data.** Use struct-of-arrays and fixed-capacity ring buffers for time series, and contiguous `Vec`s over maps and linked structures.
 - **Vectorize where volume makes it matter**, e.g. scanning log bytes with `memchr`, or columnar aggregation.
 - A new dependency must justify its compile time and memory on the Pi. A full async stack (tokio/hyper/axum) was rejected on purpose: thread-per-connection is enough for a LAN dashboard. Currently the only direct dependency is `serde_json`, with no proc-macro `serde_derive`.
 
-These principles also apply to the planned extensions:
-- Prometheus `/metrics`
-- an OTLP endpoint (done: `otlp.rs`)
-- log collection
-- node metrics from `/proc` and `/sys/fs/cgroup`
-- storage to files or a columnar store (Parquet, or polars if its weight is acceptable)
-- a highly interactive drill-down UI
+These principles apply to the observability parts too. Shipped: Prometheus `/metrics`, node and cgroup metrics (`metrics.rs`), log collection and patterns (`logwatch.rs`), an OTLP endpoint (`otlp.rs`), minute history on disk, and the drill-down UI. Still planned: columnar files (Parquet) for longer history.
 
 For high-volume data (log lines, events, samples), design for streaming, bounded memory, append-only files and columnar layouts from the start.
 
-See `ROADMAP.md` for planned features (audit log, API tokens, workstation client and MCP server, Learn section and man page, script actions) and the size and memory budgets. Build toward it.
+See `ROADMAP.md` for what's done and planned (script actions, man page, infrastructure pull requests) and the size and memory budgets. Build toward it.
 
 ## Keep every text consistent
 
 The same facts appear in many places: `README.md`, this file, `ROADMAP.md`, `KILLER_FEATURES.md`, `docs/learn/` (lessons and `cli-cheatsheet.md`), `skills/contraire/SKILL.md`, the client `HELP` text, the MCP `TOOLS` catalogue and the files `contraire init` writes (`src/client.rs`), the `OPTS` table (`src/cli.rs`), and in `static/index.html` the nav labels, `data-hint`s, the `HELP` popovers, setup snippets and the cheat-sheet demo. Installers, the Dockerfile, the release workflow and `footprint.sh` carry numbers too.
 
 - **One change, every place.** When a command, flag, env var, route, page, tool, limit or number changes, update every place that mentions it in the same commit. Before committing, `grep` the old name or number across the repository.
-- **One name per thing.** Use the names the UI shows (Overview, Containers, Stacks, Images, Incidents, Telemetry, Activity, Learn, Cheat sheet, Access) in docs, help texts and CLI output alike. Don't introduce synonyms.
+- **One name per thing.** Use the names the UI shows (Overview, Containers, Stacks, Images, Incidents, Telemetry, Activity, Learn, Cheat sheet, Access, This dashboard) in docs, help texts and CLI output alike. Don't introduce synonyms: a Compose project is a *stack*, a crash record is an *incident* (its detail is the *postmortem*), what apps send over OpenTelemetry is *telemetry*. Write American English (color, recognized, initialized).
 - **The code is the truth.** Counts (MCP tools, lessons, commands), sizes, budgets and retention times are copied from the code, never estimated. A feature is "planned" only until it ships; then the roadmap and this file say so.
 
 ## Commands
@@ -53,7 +47,7 @@ cargo check --release --target armv7-unknown-linux-gnueabihf    # Pi 3, 32-bit R
 cargo test --release -- --ignored bench_ --test-threads=1 --nocapture   # micro-benchmarks: ns/op, allocs/op, MB/s
 scripts/footprint.sh [--quick] [--perf]       # size/RSS/CPU/threads vs. budgets against the real daemon; non-zero on breach
 scripts/dist.sh                               # cross-compile linux amd64/arm64/armv7 + windows into ./dist (Docker + zig)
-docker build -t contraire .                   # FROM scratch runtime image (~600 KB); --platform linux/arm64 for a Pi
+docker build -t contraire .                   # FROM scratch runtime image (about 1.2 MB); --platform linux/arm64 for a Pi
 ```
 
 **Performance work:**
@@ -80,14 +74,15 @@ node scripts/shot.mjs "http://127.0.0.1:18080/#c/<container-id>" out.png [--dark
 ```
 
 URL hashes:
-- `#c/<container-id>` opens a container's detail drawer.
+- empty or `#overview`: the Overview; `#containers`, `#stacks`, `#images`, `#incidents`, `#telemetry`, `#activity`, `#learn`, `#cheatsheet`, `#access`, `#about` (This dashboard).
+- `#c/<container-id>` opens a container's page; `#incidents/<id>` a postmortem; `#telemetry/<service>` a service.
 - `#learn/<lesson>` opens a lesson.
 
-To test the Learn tab before its content is pushed, serve `docs/learn/` locally with CORS and pass `--docs-url http://127.0.0.1:<port>/`.
+To test the Learn page before its content is pushed, serve `docs/learn/` locally with CORS and pass `--docs-url http://127.0.0.1:<port>/`.
 
 ## Architecture
 
-The binary has six Rust modules plus one embedded page. Long-form content lives on GitHub.
+The binary is `main.rs` plus twelve modules and one embedded page. Long-form content lives on GitHub.
 
 - **Naming:** `DISPLAY_NAME` (`src/main.rs`) is the name people see, currently "mopsfraugibtdentonan". The crate, binary and repository stay `contraire`. The UI gets the display name from `/api/config`, so never hard-code it in the page.
 - **`src/http.rs`:** a hand-rolled HTTP/1.1 server.
@@ -117,7 +112,7 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Only a SHA-256 of each token is stored, in `tokens.json` next to the audit log (mode 0600, replaced atomically on write).
   - SHA-256 and the random source (`/dev/urandom`) are hand-written, so no new dependencies.
   - Scopes are `read` < `operate` < `admin`, mapped from method and path by `required_scope` in `main.rs`.
-  - The token table sits behind an `RwLock<Arc<Vec<Token>>>`. This is the one deliberate lock in the server: it is read on every request but written only on create or revoke. `last_used` is a per-token atomic.
+  - The token table sits behind an `RwLock<Arc<Vec<Token>>>`. This is a deliberate lock: it is read on every request but written only on create or revoke. `last_used` is a per-token atomic.
   - Tokens require the audit log's state directory; with `--audit-file off`, tokens are off too.
 - **`src/metrics.rs`:** one sampler thread reads cgroup v2 files for every container, plus `/proc` for the host, every 10 s.
   - It never calls the Docker API, which costs about 1 s of daemon time per container.
@@ -131,7 +126,7 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Each line is masked into a reused buffer: numbers, times, IPs, IDs and unit values become `<*>`; words are split at `/[](),;`; runs of `<*>` collapse.
   - Lines matching a known pattern allocate nothing. Unknown ones merge into a similar pattern (same length and first word, ≥70% equal) or start a new one, up to 128 per container.
   - The last 32 KB of output sits in a fixed ring buffer. On a non-zero exit or OOM kill (but not 0, 143, or 137 shortly after a `kill` event) a postmortem goes to `<state>/incidents/`. Crash loops update one file; at most 100 files are kept.
-  - Snapshots are published through `Mutex<Arc<_>>` cells, swapped every 5 s: the second deliberate lock.
+  - Snapshots are published through `Mutex<Arc<_>>` cells, swapped every 5 s; the follower registry, kill times and per-service miners sit behind `Mutex`es too, all touched rarely or briefly.
   - Memory grows with followed containers; `footprint.sh` budgets 4 MB + 256 KB per container.
 - **`src/otlp.rs`:** OTLP/HTTP receiver on `POST /v1/traces|logs|metrics`, protobuf (hand-written reader, no codegen) or JSON. gzip gets 415, gRPC isn't served.
   - The HTTP thread decodes spans into small fixed records and hands a batch to one aggregator thread through a bounded `sync_channel`; a full queue answers 503 so the sender retries. Only the aggregator touches the per-service state, so there are no locks there.
@@ -163,12 +158,12 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Themes: light, dark and auto. The choice is set via `data-theme` on `<html>` and remembered in localStorage. Dark tokens are defined twice, once for the explicit choice and once under `prefers-color-scheme`.
   - Scrollbars use the theme tokens (`scrollbar-color` plus `::-webkit-scrollbar`).
   - Fonts are injected by JS from Google Fonts so they never block the first render; offline, system fonts stand in.
-- **`build.rs`:** gzips `static/index.html` into the binary when a `gzip` tool exists (128 KB becomes 34 KB), and falls back to the raw page otherwise. The server sends it with `Content-Encoding: gzip`; clients without gzip support (plain `curl`) get a 406 with a hint.
+- **`build.rs`:** gzips `static/index.html` into the binary when a `gzip` tool exists (about 200 KB becomes 50 KB), and falls back to the raw page otherwise. The server sends it with `Content-Encoding: gzip`; clients without gzip support (plain `curl`) get a 406 with a hint.
 - **`static/index.html`:** the whole frontend, compiled in via `include_str!`. Vanilla JS and CSS with no build step.
   - Colors are CSS custom properties, with a dark palette under `prefers-color-scheme`.
   - Data arrives by push. Docker events trigger a debounced list re-fetch. Stats and logs stream while the drawer is open.
   - A 15 s fallback poll only refreshes relative texts such as "Up 5 minutes".
-- **`docs/learn/`:** the Learn tab's content (Markdown, SVG and `index.json`).
+- **`docs/learn/`:** the Learn page's content (Markdown, SVG and `index.json`).
   - **Never embedded in the binary.** The browser fetches it from `--docs-url`, by default GitHub raw on `main`, so lesson changes go live on push.
   - Images are fetched and shown through `blob:` URLs, so SVGs render whatever content type the host sends.
   - Diagrams are standalone SVGs with their own `prefers-color-scheme` styles.

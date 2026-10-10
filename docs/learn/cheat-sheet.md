@@ -1,4 +1,4 @@
-# Cheat sheet
+# Docker cheat sheet
 
 The commands you'll actually use, on one page.
 
@@ -57,4 +57,4 @@ The commands you'll actually use, on one page.
 | `139` | Crashed (segmentation fault) |
 | `143` | Stopped politely (SIGTERM) |
 
-> **Rule of thumb:** when something misbehaves, open it in the Containers tab and read the **logs** first. The answer is in there nine times out of ten.
+> **Rule of thumb:** when something misbehaves, open it on the **Containers** page and read the **logs** first. The answer is in there nine times out of ten.

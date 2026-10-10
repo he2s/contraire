@@ -16,7 +16,7 @@ docker run -d --name db -v pgdata:/var/lib/postgresql/data \
   -e POSTGRES_PASSWORD=secret postgres:16
 ```
 
-Remove the container, start a new one with the same `-v pgdata:…`, and every row is still there. In the detail panel, mounts show as `pgdata → /var/lib/postgresql/data`.
+Remove the container, start a new one with the same `-v pgdata:…`, and every row is still there. On a container's **Details** tab, mounts show as `pgdata → /var/lib/postgresql/data`.
 
 ## Bind mounts: a folder from the host
 

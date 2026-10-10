@@ -13,7 +13,7 @@ A container solves this by shipping the program **together with its surroundings
 Think of an apartment building.
 
 - The **building** is your computer: one foundation, one water supply, one electricity line.
-- Each **apartment** is a container: it has its own front door, its own furniture, its own lock. Neighbours can't walk into each other's living rooms.
+- Each **apartment** is a container: it has its own front door, its own furniture, its own lock. Neighbors can't walk into each other's living rooms.
 - But apartments **share** the building's foundation and pipes, which is why you can fit many of them on one plot of land.
 
 A **virtual machine**, by comparison, is like building a whole separate house for every family. Very private, but each one needs its own foundation, roof and plumbing.
@@ -34,7 +34,7 @@ In the dashboard this shows the containers on your own host, right now.
 | Runs on a Raspberry Pi | dozens at once | one or two, slowly |
 | Isolation | strong | stronger |
 
-> **In one sentence:** a container is a lightweight, sealed box around a program that runs the same everywhere, sharing the computer's core with its neighbours instead of bringing its own.
+> **In one sentence:** a container is a lightweight, sealed box around a program that runs the same everywhere, sharing the computer's core with its neighbors instead of bringing its own.
 
 ## Try it
 
@@ -44,7 +44,7 @@ If Docker is installed, this runs a tiny web server in a container and makes it 
 docker run -d --name hello -p 8080:80 nginx:alpine
 ```
 
-It appears in the **Containers** tab within a second. Open `http://<this-machine>:8080` to see it answer, then remove it again:
+It appears on the **Containers** page within a second. Open `http://<this-machine>:8080` to see it answer, then remove it again:
 
 ```sh
 docker rm -f hello

@@ -1,6 +1,6 @@
 # Install and run
 
-One small file, about 800 KB, with no dependencies. On the machine that runs Docker it's the dashboard. On your laptop it's the remote control.
+One small file, about 1.2 MB, with no dependencies. On the machine that runs Docker it's the dashboard. On your laptop it's the remote control.
 
 
 ```live host
@@ -105,7 +105,7 @@ docker run -d --name contraire --restart unless-stopped -p 8083:8083 \
   contraire
 ```
 
-To see per-container CPU and memory from inside a container, also add `--cgroupns=host --pid=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro`. Without them you only get host metrics. The image is built from the repository (`docker build -t contraire .`, about 1 MB). On Fedora and other SELinux systems, add `--security-opt label=disable`.
+To see per-container CPU and memory from inside a container, also add `--cgroupns=host --pid=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro`. Without them you only get host metrics. The image is built from the repository (`docker build -t contraire .`, about 1.2 MB). On Fedora and other SELinux systems, add `--security-opt label=disable`.
 
 ## Your laptop as the remote control
 

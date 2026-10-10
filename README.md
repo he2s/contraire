@@ -1,18 +1,21 @@
 # mopsfraugibtdentonan
 
-**A tiny, beautiful Docker dashboard for small machines.** One ~550 KB binary, about 2.5 MB of memory, no dependencies on the host. It is built for a Raspberry Pi 3 and happy anywhere else. (The project and binary are called `contraire`; *mopsfraugibtdentonan* is its display name.)
+**A tiny, beautiful Docker dashboard for small machines.** One binary of about 1.2 MB, about 4 MB of memory plus 0.2 MB per running container, no dependencies on the host. It is built for a Raspberry Pi 3 and happy anywhere else. (The project and binary are called `contraire`; *mopsfraugibtdentonan* is its display name.)
 
+- **Overview:** one page with everything that needs a look, each finding naming its source (Docker, incidents, telemetry, log patterns, host load), plus host CPU and memory, the busiest containers, errors in the logs, service health, recent incidents and events.
 - **Live:** container states, health, CPU and memory stream in as they happen, pushed rather than polled.
-- **Compose aware:** projects are grouped and coloured, services are shown by name, and whole projects start or stop in dependency order.
+- **Stacks:** Compose projects are grouped and colored, services are shown by name, and whole stacks start or stop in dependency order.
 - **Logs:** followed live, with errors highlighted and timestamps on demand.
 - **Images:** see what's in use; pull, remove and prune.
-- **Learn:** eight illustrated lessons on containers, Linux, networking, data and Compose. They load from this repository, so they add nothing to the binary.
+- **Learn:** eight illustrated lessons on installing, containers, images, Linux, networking, data, Compose and the Raspberry Pi, plus a Docker cheat sheet. They load from this repository, so they add nothing to the binary.
 - **Copy buttons** for every command, ID and code sample.
-- **Metrics:** CPU, memory, network and disk for every container and the host, read straight from cgroups every 10 s, with 24 h of history. `/metrics` serves Prometheus format for an existing Grafana.
+- **Metrics:** CPU, memory, network and disk for every container and the host, read straight from cgroups and `/proc` every 10 s. The last hour is kept at 10 s, the last 24 h at 1 minute; the minute history is saved to disk and survives restarts. `/metrics` serves Prometheus format for an existing Grafana.
 - **Log patterns:** every container's log, grouped live into patterns with counts (`GET /api/items/<*>` ×48,212), with errors and newly appearing patterns flagged.
 - **Incidents:** a flight recorder writes a postmortem when a container crashes or runs out of memory: exit reason, last log lines, error patterns, and CPU and memory just before. Crash loops count once.
 - **Telemetry:** your own apps can report over OpenTelemetry (OTLP/HTTP, protobuf or JSON). Traces become requests per minute, error rate and p50/p95/p99 latency per service and operation, with the latest failed and slowest requests and their trace IDs. OTLP logs become patterns. One hour in fixed-size rings in memory, nothing on disk; `--otlp-forward` passes every batch on to another collector.
 - **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
+
+Everything kept on disk lives in one state folder (see `--audit-file`): the audit log (≤ 2 MB), API tokens (hashed), incident postmortems (≤ 100 files) and the minute metrics history (≤ 4 MB).
 
 ## Install
 
@@ -70,10 +73,14 @@ contraire ps                      # all containers, plain-language status
 contraire inspect web             # health streak, exit code explained, ports, mounts, compose info
 contraire logs web -f             # follow live
 contraire restart web
-contraire stacks                  # compose stacks and what needs attention
+contraire top                     # CPU, memory, network and disk per container, busiest first
+contraire patterns web            # its whole log as counted patterns, errors first
+contraire incidents               # crashes caught by the flight recorder
+contraire stacks                  # Compose stacks and what needs attention
 contraire events --since 30       # starts, stops with exit codes, OOM kills, health changes
-contraire services                # apps reporting over OpenTelemetry: requests, errors, latency
+contraire services                # Telemetry: apps reporting over OpenTelemetry, with requests, errors, latency
 contraire export telemetry --csv  # the last hour per service and minute, for a spreadsheet or DuckDB
+contraire init ops-pi             # a session folder for Claude Code: skill, reference, PROJECT.md, action log
 contraire ps --help               # everything else (add --json for raw output)
 ```
 
@@ -94,7 +101,7 @@ Claude then gets 17 tools: `list_containers`, `inspect_container`, `container_lo
 | `-u, --user` | `CONTRAIRE_USER` | `admin` |
 | `-p, --password-file` | `CONTRAIRE_PASSWORD_FILE` | none (or `CONTRAIRE_PASSWORD`) |
 | `--docs-url` | `CONTRAIRE_DOCS_URL` | this repository's `docs/learn/` |
-| `--audit-file` | `CONTRAIRE_AUDIT_FILE` | `auto`: `$STATE_DIRECTORY`, else `~/.local/state/contraire/audit.jsonl`; `off` disables it |
+| `--audit-file` | `CONTRAIRE_AUDIT_FILE` | `auto`: `audit.jsonl` in `$STATE_DIRECTORY`, else `$XDG_STATE_HOME/contraire`, else `~/.local/state/contraire`; `off` disables it (and tokens, incidents and saved metrics with it) |
 | `--otlp-forward` | `CONTRAIRE_OTLP_FORWARD` | none; e.g. `http://collector:4318` |
 | `--max-connections` | `CONTRAIRE_MAX_CONNECTIONS` | `64` |
 
@@ -113,8 +120,8 @@ cargo test --release -- --ignored bench_ --test-threads=1 --nocapture
 scripts/footprint.sh --perf
 ```
 
-`footprint.sh` checks binary size, idle memory, idle CPU, memory under load, and thread cleanup against the budgets in [ROADMAP.md](ROADMAP.md). It exits non-zero if any budget is exceeded.
+`footprint.sh` checks binary size, idle memory, idle CPU, memory under load, and thread cleanup against the budgets in [ROADMAP.md](ROADMAP.md): binary 1.25 MB, idle memory 4 MB + 256 KB per followed container, idle CPU 0.5%, peak memory 16 MB, no leaked threads. It exits non-zero if any budget is exceeded.
 
 ## Where it's going
 
-See [ROADMAP.md](ROADMAP.md): audit log, API tokens, a workstation CLI with an MCP server for coding agents, scriptable actions, and observability.
+See [ROADMAP.md](ROADMAP.md) for what's next (scriptable actions, infrastructure pull requests, a fleet of hosts) and [KILLER_FEATURES.md](KILLER_FEATURES.md) for the ideas behind it.

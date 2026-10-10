@@ -44,7 +44,7 @@ services:
 docker update --restart unless-stopped <container>
 ```
 
-- Clean up old images now and then (the **Images** tab has a button for this):
+- Clean up old images now and then (the **Images** page has a button for this):
 
 ```sh
 docker image prune
@@ -68,4 +68,4 @@ Q: An image starts on your PC but exits immediately on the Pi with "exec format 
 > Images are built per CPU architecture. Check with `docker manifest inspect <image>` for `arm64` or `arm`, or pick an image that publishes them.
 ```
 
-Next: [Cheat sheet](cheat-sheet.md).
+Next: [Docker cheat sheet](cheat-sheet.md).

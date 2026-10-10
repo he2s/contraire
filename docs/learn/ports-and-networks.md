@@ -12,7 +12,7 @@ docker run -d -p 8080:80 nginx:alpine
 #               └─────── port on this machine
 ```
 
-Read `-p 8080:80` as **"host 8080 leads to container 80"**. In the Containers tab, these appear as small blue pills like `8080→80`. Click one to open it.
+Read `-p 8080:80` as **"host 8080 leads to container 80"**. On the **Containers** page these appear as small boxes like `:8080` (the port on this machine). Click one to open it.
 
 ![A published port forwards traffic from the host into the container's private network.](img/ports.svg)
 
@@ -45,7 +45,7 @@ The database never needs a published port: only `web` talks to it, over the priv
 | `none` | No network at all |
 | *your own* | Name-based discovery between the containers you attach |
 
-Compose creates one private network per project automatically, which is why services in a compose file can reach each other by service name.
+Compose creates one private network per stack (project) automatically, which is why services in a compose file can reach each other by service name.
 
 ```quiz
 Q: What does `-p 8080:80` mean?

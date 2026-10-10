@@ -45,7 +45,7 @@ docker image prune                 # delete unused, untagged images
 docker build -t myapp:1.0 .        # build an image from ./Dockerfile
 ```
 
-In this dashboard, the **Images** tab shows the same list, marks which images are in use, and can pull or clean up for you.
+In this dashboard, the **Images** page shows the same list, marks which images are in use, and can pull or clean up for you.
 
 ```quiz
 Q: You run ten containers from the same image. How often are its layers stored on disk?

@@ -51,7 +51,7 @@ docker compose down       # stop and remove (volumes are kept)
 
 - **A private network** where `web`, `api` and `db` find each other by service name.
 - **Start order**: `depends_on` makes `db` start first. With `condition: service_healthy`, `api` even waits until the database's health check passes.
-- **One name for the whole thing**, the *project*, taken from the folder name unless you set `-p`.
+- **One name for the whole thing**, the *project*, taken from the folder name unless you set `-p`. This dashboard calls a project a **stack**.
 
 
 ```live stacks
@@ -62,12 +62,12 @@ In the dashboard this lists the Compose stacks on your own host.
 
 Compose labels every container it creates: which project, which service, which file. This dashboard reads those labels, so it can:
 
-- **Group** containers by project, each with its own colour.
+- **Group** containers by stack, each with its own color.
 - Show **service names** (`web`, `api #2`) instead of generated names like `shop-api-2`.
-- **Start, stop or restart a whole project** with the buttons next to its name, following the `depends_on` order: dependencies start first and stop last.
-- Show the **compose file and folder** a project came from, with a button that copies the exact `docker compose up` command.
+- **Start, stop or restart a whole stack** on the **Stacks** page, with the buttons next to its name, following the `depends_on` order: dependencies start first and stop last.
+- Show the **compose file and folder** a stack came from, with a button that copies the exact `docker compose up` command.
 
-> **Good to know:** the dashboard doesn't need the compose file itself, and it never edits it. Everything it knows comes from the running containers. To *change* a project (new image, new port), edit `compose.yaml` and run `docker compose up -d` again. Compose only recreates what changed.
+> **Good to know:** the dashboard doesn't need the compose file itself, and it never edits it. Everything it knows comes from the running containers. To *change* a stack (new image, new port), edit `compose.yaml` and run `docker compose up -d` again. Compose only recreates what changed.
 
 ```quiz
 Q: `api` has `depends_on: db` with `condition: service_healthy`. What does Compose do on `up`?
