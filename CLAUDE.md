@@ -104,6 +104,18 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Most routes are thin proxies to the Docker API.
   - `/api/info` and the stats routes slim Docker's large payloads down server-side (`live::summarize_stats`).
   - The Content-Security-Policy is built per request so it allows exactly the configured docs origin.
+- **Self-telemetry and history routes:**
+  - `/api/self` reports this process's PID, executable, RSS, CPU seconds, threads, open files, connections and requests, all read from `/proc/self`.
+  - `/api/events?since=N` returns recent Docker event history, using the same server-side event filter as the live stream.
+- **Visual design:** the UI follows the "Modernist" style of the Incident Playbook design (claude.ai/design/p/368c794f-…).
+  - Swiss grid: hard 2 px rules, square corners, panels separated by rules instead of gaps.
+  - One signal red (#E8341C) for the active item, failures and key numbers. Small labels are uppercase and letter-spaced.
+  - Typefaces: Archivo for headings and body, IBM Plex Mono for code.
+  - Code blocks are black, with an attached Copy cell. Charts are red and black bars, not lines.
+  - Content always uses the full browser width.
+  - Themes: light, dark and auto. The choice is set via `data-theme` on `<html>` and remembered in localStorage. Dark tokens are defined twice, once for the explicit choice and once under `prefers-color-scheme`.
+  - Scrollbars use the theme tokens (`scrollbar-color` plus `::-webkit-scrollbar`).
+  - Fonts are injected by JS from Google Fonts so they never block the first render; offline, system fonts stand in.
 - **`static/index.html`:** the whole frontend, compiled in via `include_str!`. Vanilla JS and CSS with no build step.
   - Colors are CSS custom properties, with a dark palette under `prefers-color-scheme`.
   - Data arrives by push. Docker events trigger a debounced list re-fetch. Stats and logs stream while the drawer is open.

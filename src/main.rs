@@ -26,6 +26,11 @@ struct App {
     auth: Option<String>,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
+    listen: String,
+    started: std::time::Instant,
+    started_unix: u64,
+    active: Arc<AtomicUsize>,
+    requests: std::sync::atomic::AtomicU64,
 }
 
 fn main() {
@@ -50,7 +55,17 @@ fn main() {
         eprintln!("contraire: {e}\nTry 'contraire --help' for more information.");
         std::process::exit(2);
     });
-    let app = Arc::new(App { docker, auth, docs_url: cfg.docs_url });
+    let active = Arc::new(AtomicUsize::new(0));
+    let app = Arc::new(App {
+        docker,
+        auth,
+        docs_url: cfg.docs_url,
+        listen: cfg.listen.clone(),
+        started: std::time::Instant::now(),
+        started_unix: unix_now(),
+        active: active.clone(),
+        requests: std::sync::atomic::AtomicU64::new(0),
+    });
 
     eprintln!("contraire: {DISPLAY_NAME} listening on http://{} (docker: {})", cfg.listen, app.docker.describe());
     let loopback = listener.local_addr().is_ok_and(|a| a.ip().is_loopback());
@@ -61,7 +76,6 @@ fn main() {
         );
     }
 
-    let active = Arc::new(AtomicUsize::new(0));
     for stream in listener.incoming().flatten() {
         if active.fetch_add(1, Ordering::Relaxed) >= cfg.max_connections {
             active.fetch_sub(1, Ordering::Relaxed);
@@ -86,6 +100,28 @@ impl Drop for Slot {
     }
 }
 
+fn unix_now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// `/proc/self/status` fields in kB (or counts), Linux only.
+fn proc_status(key: &str) -> Option<u64> {
+    let s = std::fs::read_to_string("/proc/self/status").ok()?;
+    let line = s.lines().find(|l| l.starts_with(key))?;
+    line[key.len()..].trim_start_matches(':').split_whitespace().next()?.parse().ok()
+}
+
+/// User + system CPU seconds of this process. Assumes USER_HZ = 100, which Linux fixes for
+/// the /proc ABI on every architecture contraire targets.
+fn proc_cpu_seconds() -> Option<f64> {
+    let s = std::fs::read_to_string("/proc/self/stat").ok()?;
+    // Fields after the ")" that closes the command name; utime and stime are 14 and 15.
+    let rest = &s[s.rfind(')')? + 2..];
+    let f: Vec<&str> = rest.split_whitespace().collect();
+    let ticks = f.get(11)?.parse::<f64>().ok()? + f.get(12)?.parse::<f64>().ok()?;
+    Some(ticks / 100.0)
+}
+
 /// `https://host:port/some/path` → `https://host:port`
 fn origin(url: &str) -> &str {
     let rest = url.find("://").map_or(0, |i| i + 3);
@@ -99,6 +135,7 @@ fn valid_id(s: &str) -> bool {
 
 impl App {
     fn handle(&self, req: &Request) -> Response {
+        self.requests.fetch_add(1, Ordering::Relaxed);
         if let Some(expected) = &self.auth {
             let given = req.header("authorization").unwrap_or("");
             if !http::ct_eq(given.as_bytes(), expected.as_bytes()) {
@@ -121,9 +158,11 @@ impl App {
         Ok(match (method, segs.as_slice()) {
             ("GET", [""]) => Response::new(200, "text/html; charset=utf-8", INDEX_HTML).with_header(
                 "Content-Security-Policy",
-                // The Learn tab fetches text and images from the docs origin; images are shown via blob: URLs.
+                // The Learn tab fetches text and images from the docs origin (images shown via blob: URLs);
+                // fonts come from Google Fonts, with system fallbacks offline.
                 format!(
-                    "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; \
+                    "default-src 'self'; script-src 'unsafe-inline'; \
+                     style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; \
                      img-src 'self' data: blob:; connect-src 'self' {}",
                     origin(&self.docs_url)
                 ),
@@ -131,6 +170,15 @@ impl App {
             ("GET", ["api", "info"]) => self.info()?,
             ("GET", ["api", "config"]) => {
                 Response::json(200, json!({ "name": DISPLAY_NAME, "docs": self.docs_url, "version": env!("CARGO_PKG_VERSION") }).to_string())
+            }
+            ("GET", ["api", "self"]) => Response::json(200, self.telemetry().to_string()).with_header("Cache-Control", "no-store"),
+            ("GET", ["api", "events"]) => {
+                // Recent history for the events panel; the live tail comes over /api/stream.
+                let secs = req.param("since").and_then(|t| t.parse::<u64>().ok()).unwrap_or(3600).min(86_400);
+                let now = unix_now();
+                let path = format!("{}&since={}&until={now}", live::EVENTS, now.saturating_sub(secs));
+                let r = self.docker.get(&path)?;
+                Response::new(r.status, "application/x-ndjson", r.body).with_header("Cache-Control", "no-store")
             }
             ("GET", ["api", "stream"]) => {
                 let container = req.param("c").filter(|c| valid_id(c)).map(str::to_string);
@@ -177,6 +225,33 @@ impl App {
             }
             ("GET", _) => Response::error(404, "not found"),
             _ => Response::error(405, "method not allowed"),
+        })
+    }
+
+    /// What this process itself costs: shown in the UI so the footprint claims stay checkable.
+    fn telemetry(&self) -> Value {
+        let exe = std::env::current_exe().ok();
+        let kb = |k: &str| proc_status(k).map(|v| v * 1024);
+        json!({
+            "name": DISPLAY_NAME,
+            "version": env!("CARGO_PKG_VERSION"),
+            "pid": std::process::id(),
+            "exe": exe.as_ref().map(|p| p.display().to_string()),
+            "exe_bytes": exe.and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()),
+            "os": std::env::consts::OS,
+            "arch": std::env::consts::ARCH,
+            "listen": self.listen,
+            "docker": self.docker.describe(),
+            "auth": self.auth.is_some(),
+            "started": self.started_unix,
+            "uptime": self.started.elapsed().as_secs(),
+            "cpu_seconds": proc_cpu_seconds(),
+            "rss": kb("VmRSS"),
+            "rss_peak": kb("VmHWM"),
+            "threads": proc_status("Threads"),
+            "fds": std::fs::read_dir("/proc/self/fd").ok().map(|d| d.count()),
+            "connections": self.active.load(Ordering::Relaxed),
+            "requests": self.requests.load(Ordering::Relaxed),
         })
     }
 

@@ -18,8 +18,10 @@ use crate::docker::{Demux, Docker, Tick};
 
 /// Socket read timeout for Docker streams and the SSE heartbeat interval.
 const IDLE: Duration = Duration::from_secs(15);
-/// `filters={"type":["container","image"]}`
-const EVENTS: &str = "/events?filters=%7B%22type%22%3A%5B%22container%22%2C%22image%22%5D%7D";
+/// Only events that change what the UI shows (health-check `exec_*` events fire every few
+/// seconds per container and are left out by Docker itself):
+/// `filters={"type":["container","image"],"event":["create","start","restart","die","oom","pause","unpause","destroy","health_status","pull","delete","untag","tag"]}`
+pub const EVENTS: &str = "/events?filters=%7B%22type%22%3A%5B%22container%22%2C%22image%22%5D%2C%22event%22%3A%5B%22create%22%2C%22start%22%2C%22restart%22%2C%22die%22%2C%22oom%22%2C%22pause%22%2C%22unpause%22%2C%22destroy%22%2C%22health_status%22%2C%22pull%22%2C%22delete%22%2C%22untag%22%2C%22tag%22%5D%7D";
 /// Upper bound for one write to the browser, so a log burst can't balloon memory.
 const MAX_BATCH: usize = 256 * 1024;
 
@@ -142,6 +144,8 @@ fn events() -> Handler {
                 "id": v.pointer("/Actor/ID"),
                 "name": attr("name"),
                 "project": attr("com.docker.compose.project"),
+                "exit": attr("exitCode"),
+                "time": v.get("time"),
             });
             out.push_str(&frame("docker", &ev.to_string()));
         });
