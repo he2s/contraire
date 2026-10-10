@@ -43,7 +43,8 @@ The audit trail is the most important item. It is what makes agent-driven manage
   - background on how containers work on Linux (namespaces, cgroups, image layers, volumes, ports, networking), explained with inline SVG diagrams
 - **Copy buttons:** on every code block and instruction, in the UI and in the docs.
 - **Man page:** generated from the `OPTS` table in `src/cli.rs`, so it never drifts from `--help`. Plus a printable cheat sheet.
-- **Footprint:** docs are compressed when the binary is built and served with `Content-Encoding: gzip`. They live inside the binary, so they work offline on a LAN.
+- **Footprint rule: large text never goes into the binary.** Lessons, docs and images live in the repository (`docs/`). The browser fetches them from GitHub at runtime (`--docs-url`, mirrorable). The binary only carries the small shell that renders them.
+  - **Done:** Learn tab with eight lessons in `docs/learn/`.
 
 ## 4. Extensibility: actions (scripts), carefully
 

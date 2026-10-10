@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 290" width="720" height="290"><style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;fill:#16181d}
+.t{font-size:15px;font-weight:650}.s{font-size:12px;fill:#5f6571}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.hw{fill:#eceef1;stroke:#d5d8de}.os{fill:#e4e4f7;stroke:#c5c5ef}.box{fill:#fff;stroke:#d5d8de}
+.a{fill:#5b5bd6}.a2{fill:#8d8de6}.a3{fill:#b7b7f0}.g{fill:#e3f5ec;stroke:#9fd8bd}.o{fill:#fbf1df;stroke:#ecd0a0}.ln{stroke:#9aa0ab;stroke-width:1.5;fill:none}.w{fill:#fff}
+@media (prefers-color-scheme: dark){text{fill:#e8eaee}.s{fill:#a0a7b3}.hw{fill:#22252c;stroke:#30343d}.os{fill:#23234a;stroke:#3a3a6e}.box{fill:#16181d;stroke:#30343d}.a{fill:#8b8bf5}.a2{fill:#6a6ad8}.a3{fill:#4b4bb0}.g{fill:#12291f;stroke:#25543f}.o{fill:#2d2412;stroke:#5a4520}.ln{stroke:#6c7380}.w{fill:#e8eaee}}
+</style>
+<text x="30" y="30" class="t">One image, three containers</text>
+<g transform="translate(30,48)">
+ <rect x="0" y="0" width="200" height="34" rx="8" class="g"/><text x="100" y="22" text-anchor="middle" class="s">writable layer · web-1</text>
+ <rect x="220" y="0" width="200" height="34" rx="8" class="g"/><text x="320" y="22" text-anchor="middle" class="s">writable layer · web-2</text>
+ <rect x="440" y="0" width="200" height="34" rx="8" class="g"/><text x="540" y="22" text-anchor="middle" class="s">writable layer · web-3</text>
+ <path d="M100 38v18M320 38v18M540 38v18" class="ln"/>
+ <rect x="0" y="60" width="640" height="40" rx="8" class="a"/><text x="20" y="85" class="m w">COPY app /usr/local/bin/app</text><text x="620" y="85" text-anchor="end" class="s w" style="fill:#fff">layer 3 · 2 MB</text>
+ <rect x="0" y="106" width="640" height="40" rx="8" class="a2"/><text x="20" y="131" class="m w">RUN apk add --no-cache curl</text><text x="620" y="131" text-anchor="end" class="s" style="fill:#fff">layer 2 · 5 MB</text>
+ <rect x="0" y="152" width="640" height="40" rx="8" class="a3"/><text x="20" y="177" class="m">FROM alpine:3.20</text><text x="620" y="177" text-anchor="end" class="s">layer 1 · 8 MB, shared with every alpine image</text>
+ <text x="0" y="222" class="s">Image layers are read-only and stored once. Each container only adds its own thin writable layer.</text>
+</g>
+</svg>

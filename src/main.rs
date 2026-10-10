@@ -1,6 +1,8 @@
 mod cli;
+mod compose;
 mod docker;
 mod http;
+mod live;
 
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -11,12 +13,17 @@ use docker::Docker;
 use http::{Request, Response};
 use serde_json::{Value, json};
 
+/// Human-facing name of the tool. The crate, binary and repository stay `contraire`.
+pub const DISPLAY_NAME: &str = "mopsfraugibtdentonan";
+
 const INDEX_HTML: &str = include_str!("../static/index.html");
 
 struct App {
     docker: Docker,
     /// Expected `Authorization` header value, if a password is configured.
     auth: Option<String>,
+    /// Base URL the Learn tab fetches its content from (never embedded in the binary).
+    docs_url: String,
 }
 
 fn main() {
@@ -37,9 +44,13 @@ fn main() {
         eprintln!("contraire: cannot listen on {}: {e}", cfg.listen);
         std::process::exit(1);
     });
-    let app = Arc::new(App { docker: Docker::new(cfg.socket), auth });
+    let docker = Docker::parse(&cfg.docker).unwrap_or_else(|e| {
+        eprintln!("contraire: {e}\nTry 'contraire --help' for more information.");
+        std::process::exit(2);
+    });
+    let app = Arc::new(App { docker, auth, docs_url: cfg.docs_url });
 
-    eprintln!("contraire: listening on http://{} (docker: {})", cfg.listen, app.docker.socket());
+    eprintln!("contraire: {DISPLAY_NAME} listening on http://{} (docker: {})", cfg.listen, app.docker.describe());
     let loopback = listener.local_addr().is_ok_and(|a| a.ip().is_loopback());
     if !loopback && app.auth.is_none() {
         eprintln!(
@@ -73,6 +84,12 @@ impl Drop for Slot {
     }
 }
 
+/// `https://host:port/some/path` → `https://host:port`
+fn origin(url: &str) -> &str {
+    let rest = url.find("://").map_or(0, |i| i + 3);
+    url[rest..].find('/').map_or(url, |i| &url[..rest + i])
+}
+
 /// Container names, IDs and image IDs (`sha256:…`). Rejects anything that could escape the path.
 fn valid_id(s: &str) -> bool {
     !s.is_empty() && s.len() <= 128 && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"_.-:".contains(&b))
@@ -100,12 +117,24 @@ impl App {
         let method = if req.method == "HEAD" { "GET" } else { req.method.as_str() };
 
         Ok(match (method, segs.as_slice()) {
-            ("GET", [""]) => Response::new(200, "text/html; charset=utf-8", INDEX_HTML)
-                .with_header(
-                    "Content-Security-Policy",
-                    "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:",
+            ("GET", [""]) => Response::new(200, "text/html; charset=utf-8", INDEX_HTML).with_header(
+                "Content-Security-Policy",
+                // The Learn tab fetches text and images from the docs origin; images are shown via blob: URLs.
+                format!(
+                    "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; \
+                     img-src 'self' data: blob:; connect-src 'self' {}",
+                    origin(&self.docs_url)
                 ),
+            ),
             ("GET", ["api", "info"]) => self.info()?,
+            ("GET", ["api", "config"]) => {
+                Response::json(200, json!({ "name": DISPLAY_NAME, "docs": self.docs_url, "version": env!("CARGO_PKG_VERSION") }).to_string())
+            }
+            ("GET", ["api", "stream"]) => {
+                let container = req.param("c").filter(|c| valid_id(c)).map(str::to_string);
+                let tail = req.param("tail").and_then(|t| t.parse::<u32>().ok()).unwrap_or(300).clamp(1, 10_000);
+                Response::sse(live::stream(self.docker.clone(), container, tail))
+            }
             ("GET", ["api", "containers"]) => self.proxy("GET", "/containers/json?all=1")?,
             ("GET", ["api", "images"]) => self.proxy("GET", "/images/json")?,
             ("POST", ["api", "images", "pull"]) => self.pull(&req.body)?,
@@ -135,6 +164,9 @@ impl App {
                 }
             }
             ("GET", ["api", "containers", id, "stats"]) => self.stats(id)?,
+            ("POST", ["api", "projects", name, action @ ("start" | "stop" | "restart")]) => {
+                compose::project_action(&self.docker, name, action)?
+            }
             ("POST", ["api", "containers", id, action @ ("start" | "stop" | "restart" | "pause" | "unpause" | "kill")]) => {
                 let r = self.docker.call("POST", &format!("/containers/{id}/{action}"), None, Duration::from_secs(90))?;
                 // 304 = already in the requested state; not worth an error toast.
@@ -182,35 +214,7 @@ impl App {
             return Ok(Response::json(r.status, r.body));
         }
         let s: Value = serde_json::from_slice(&r.body).unwrap_or_default();
-        let n = |p: &str| s.pointer(p).and_then(Value::as_f64);
-
-        let cpu = (|| {
-            let cpu_delta = n("/cpu_stats/cpu_usage/total_usage")? - n("/precpu_stats/cpu_usage/total_usage")?;
-            let sys_delta = n("/cpu_stats/system_cpu_usage")? - n("/precpu_stats/system_cpu_usage")?;
-            let cpus = n("/cpu_stats/online_cpus")
-                .or_else(|| s.pointer("/cpu_stats/cpu_usage/percpu_usage")?.as_array().map(|a| a.len() as f64))
-                .unwrap_or(1.0);
-            (sys_delta > 0.0).then(|| (cpu_delta / sys_delta * cpus * 100.0).max(0.0))
-        })();
-        // Match `docker stats`: subtract page cache (cgroup v2: inactive_file, v1: cache).
-        let mem = n("/memory_stats/usage").map(|u| {
-            u - n("/memory_stats/stats/inactive_file").or(n("/memory_stats/stats/cache")).unwrap_or(0.0)
-        });
-        let (mut rx, mut tx) = (0.0, 0.0);
-        if let Some(nets) = s.get("networks").and_then(Value::as_object) {
-            for net in nets.values() {
-                rx += net.get("rx_bytes").and_then(Value::as_f64).unwrap_or(0.0);
-                tx += net.get("tx_bytes").and_then(Value::as_f64).unwrap_or(0.0);
-            }
-        }
-        let out = json!({
-            "cpu": cpu,
-            "mem": mem,
-            "mem_limit": n("/memory_stats/limit"),
-            "rx": rx,
-            "tx": tx,
-            "pids": n("/pids_stats/current"),
-        });
+        let out = live::summarize_stats(&s);
         Ok(Response::json(200, out.to_string()).with_header("Cache-Control", "no-store"))
     }
 

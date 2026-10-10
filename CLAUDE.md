@@ -52,27 +52,56 @@ Default listen address: `0.0.0.0:8083`.
 - `parse` takes the environment as a closure, so tests never touch process state.
 - The parser is hand-written on purpose. clap was measured at +193–218 KB of binary and about 3× the clean build time (19 crates including `syn` with derive), which is too much for the Pi. Keep new options in the table rather than reaching for clap.
 
-**UI check:** the connected Chrome extension may run on a different machine, so `127.0.0.1` there is not this host. Use local headless Chrome instead. A URL hash `#c/<container-id>` opens the detail drawer directly:
+**UI check:** the connected Chrome extension may run on a different machine, so `127.0.0.1` there is not this host. Use `scripts/shot.mjs` instead. It drives local headless Chrome over the DevTools protocol, waits a fixed time, then saves a screenshot. It exits non-zero on console errors, and `--eval` prints a JS expression's value.
+
+Plain `chrome --screenshot` doesn't work here: the page holds an SSE stream open forever, so Chrome never sees the page as finished loading.
 
 ```sh
-google-chrome --headless=new --no-sandbox --user-data-dir=<scratch> --window-size=1280,900 \
-  --virtual-time-budget=6000 [--force-dark-mode] --screenshot=out.png "http://127.0.0.1:18080/#c/<id>"
+node scripts/shot.mjs "http://127.0.0.1:18080/#c/<container-id>" out.png [--dark] [--height=1400] [--eval='document.title']
 ```
+
+URL hashes:
+- `#c/<container-id>` opens a container's detail drawer.
+- `#learn/<lesson>` opens a lesson.
+
+To test the Learn tab before its content is pushed, serve `docs/learn/` locally with CORS and pass `--docs-url http://127.0.0.1:<port>/`.
 
 ## Architecture
 
-The binary has three Rust modules plus one embedded page.
+The binary has six Rust modules plus one embedded page. Long-form content lives on GitHub.
 
-- `src/http.rs` is a hand-rolled HTTP/1.1 server: keep-alive, Content-Length bodies only, and hard caps on line, header and body size. Every response gets security headers here.
-- `src/docker.rs` is a Docker Engine API client over the unix socket. It opens one connection per call with `Connection: close` and reads to EOF, then decodes chunked transfer-encoding. It also demultiplexes non-TTY log streams, which use an 8-byte frame header, and passes TTY logs through raw.
-- `src/main.rs` holds `App`: the auth check, the CSRF check, and routing by `match` on `(method, path segments)`.
+- **Naming:** `DISPLAY_NAME` (`src/main.rs`) is the name people see, currently "mopsfraugibtdentonan". The crate, binary and repository stay `contraire`. The UI gets the display name from `/api/config`, so never hard-code it in the page.
+- **`src/http.rs`:** a hand-rolled HTTP/1.1 server.
+  - Keep-alive, Content-Length bodies only, and hard caps on line, header and body size.
+  - Every response gets security headers here.
+  - `Response::sse` hands the raw socket to a closure for long-lived Server-Sent Events.
+- **`src/docker.rs`:** the Docker Engine API client.
+  - Transports: unix socket, `tcp://`, and Windows named pipe (`npipe://`), selected with `cfg`.
+  - Buffered calls use `Connection: close` and read to EOF.
+  - `Docker::stream` returns a `Stream` that decodes chunked encoding incrementally. Reads time out regularly, which gives callers an `Idle` tick.
+  - `Demux` splits non-TTY log frames incrementally.
+- **`src/live.rs`:** one SSE stream per browser tab (`/api/stream?c=<id>`).
+  - Each Docker stream gets one small relay thread: events, plus stats and logs for the open container.
+  - Relays feed a bounded `sync_channel`, and the connection thread batches what arrives into single writes.
+  - Shutdown is an `AtomicBool` that relays check on every idle tick (15 s), so threads outlive a disconnected client by at most that long.
+  - One stream per tab, not one per data source, because browsers allow only about 6 HTTP/1.1 connections per host.
+- **`src/compose.rs`:** project-level start/stop/restart, using compose labels only (no compose CLI).
+  - The order comes from `com.docker.compose.depends_on`: dependencies start first and stop last.
+  - Containers in the same dependency wave run in parallel via `thread::scope`.
+- **`src/cli.rs`:** argument parsing (see above).
+- **`src/main.rs`:** holds `App`: the auth check, the CSRF check, and routing by `match` on `(method, path segments)`.
   - Most routes are thin proxies to the Docker API.
-  - `/api/info` and `/api/containers/{id}/stats` slim down Docker's large payloads server-side. CPU% is computed from the cpu/precpu delta, and memory subtracts page cache to match `docker stats`.
-  - The connection limit is enforced by a `Slot` drop guard around an atomic counter.
-- `static/index.html` is the entire frontend, compiled in via `include_str!`, so the binary is self-contained. It is vanilla JS and CSS with no build step and no external requests, which keeps it working on an offline LAN.
+  - `/api/info` and the stats routes slim Docker's large payloads down server-side (`live::summarize_stats`).
+  - The Content-Security-Policy is built per request so it allows exactly the configured docs origin.
+- **`static/index.html`:** the whole frontend, compiled in via `include_str!`. Vanilla JS and CSS with no build step.
   - Colors are CSS custom properties, with a dark palette under `prefers-color-scheme`.
-  - Containers are grouped by the `com.docker.compose.project` label.
-  - The detail drawer polls stats every 3 s and logs every 2.5 s, only while it is open.
+  - Data arrives by push. Docker events trigger a debounced list re-fetch. Stats and logs stream while the drawer is open.
+  - A 15 s fallback poll only refreshes relative texts such as "Up 5 minutes".
+- **`docs/learn/`:** the Learn tab's content (Markdown, SVG and `index.json`).
+  - **Never embedded in the binary.** The browser fetches it from `--docs-url`, by default GitHub raw on `main`, so lesson changes go live on push.
+  - Images are fetched and shown through `blob:` URLs, so SVGs render whatever content type the host sends.
+  - Diagrams are standalone SVGs with their own `prefers-color-scheme` styles.
+  - The page includes a small Markdown renderer: headings, lists, fenced code with copy buttons, `>` callouts, tables, images, and `x.md` links between lessons.
 
 **Security invariants. Keep these when adding routes:**
 - Every path segment that is interpolated into a Docker API path goes through `valid_id`, which blocks traversal. Query values go through `http::url_encode`.

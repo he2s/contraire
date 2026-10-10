@@ -4,38 +4,41 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>contraire</title>
+<title>…</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235b5bd6'/%3E%3Cpath d='M8 12h16v10H8z M11 8h4v4h-4z M17 8h4v4h-4z' fill='white'/%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f1f2f5; --line: #e3e5ea;
-  --text: #16181d; --muted: #646a76; --faint: #9aa0ab;
+  --text: #16181d; --muted: #5f6571; --faint: #8b919c;
   --accent: #5b5bd6; --accent-soft: #ececfb;
-  --green: #1f9d61; --green-soft: #e3f5ec;
-  --amber: #b7791f; --amber-soft: #fbf1df;
-  --red: #d43f3a; --red-soft: #fbe7e6;
+  --green: #1a8f57; --green-soft: #e3f5ec;
+  --amber: #a86c12; --amber-soft: #fbf1df;
+  --red: #c93a35; --red-soft: #fbe7e6;
   --grey-soft: #eceef1;
-  --glow: rgba(91,91,214,.13); --tb: rgba(246,247,249,.78);
+  --glow: rgba(91,91,214,.13); --tb: rgba(246,247,249,.8);
   --shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   --shadow-lg: 0 20px 50px rgba(16,24,40,.18);
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   --radius: 12px;
+  --hs: 62%; --hl: 52%;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0e0f13; --panel: #16181d; --panel-2: #1c1f25; --line: #262a32;
-    --text: #e8eaee; --muted: #9aa1ad; --faint: #646b78;
+    --text: #e8eaee; --muted: #a0a7b3; --faint: #6c7380;
     --accent: #8b8bf5; --accent-soft: #23234a;
     --green: #3ecf8e; --green-soft: #12291f;
     --amber: #f0b44c; --amber-soft: #2d2412;
     --red: #f2706b; --red-soft: #2f1716;
     --grey-soft: #22252c;
-    --glow: rgba(139,139,245,.16); --tb: rgba(14,15,19,.75);
+    --glow: rgba(139,139,245,.16); --tb: rgba(14,15,19,.78);
     --shadow: 0 1px 2px rgba(0,0,0,.3);
     --shadow-lg: 0 20px 60px rgba(0,0,0,.6);
+    --hs: 70%; --hl: 66%;
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
 body {
   background: radial-gradient(1200px 380px at 50% -160px, var(--glow), transparent 70%) no-repeat, var(--bg);
@@ -44,7 +47,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px 60px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* header */
 header { display: flex; align-items: center; gap: 14px; padding: 22px 0 18px; flex-wrap: wrap; }
@@ -53,17 +59,17 @@ header { display: flex; align-items: center; gap: 14px; padding: 22px 0 18px; fl
 .brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
 .spacer { flex: 1; }
 .live { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; }
-.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
-.live.off i { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); animation: breathe 2.4s ease-in-out infinite; }
+.live.off i { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); animation: none; }
+@keyframes breathe { 50% { box-shadow: 0 0 0 5px var(--green-soft); } }
 
 /* stat tiles */
 .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
-.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); transition: transform .2s, box-shadow .2s; }
+.tile:hover { transform: translateY(-1px); box-shadow: 0 6px 20px -8px rgba(16,24,40,.18); }
 .tile .k { color: var(--muted); font-size: 12px; }
 .tile .v { font-size: 22px; font-weight: 600; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
 .tile .s { color: var(--faint); font-size: 12px; }
-.tile { transition: transform .2s, box-shadow .2s; }
-.tile:hover { transform: translateY(-1px); box-shadow: 0 6px 20px -8px rgba(16,24,40,.18); }
 .comp { display: flex; height: 4px; border-radius: 9px; overflow: hidden; background: var(--grey-soft); margin-top: 8px; gap: 2px; }
 .comp i { display: block; height: 100%; transition: flex-grow .5s; }
 .comp .g { background: var(--green); } .comp .a { background: var(--amber); } .comp .r { background: var(--red); } .comp .x { background: var(--faint); opacity: .5; }
@@ -92,27 +98,32 @@ input[type=text]:focus, select:focus { border-color: var(--accent); box-shadow: 
 .btn.primary:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--red); }
 .btn:disabled { opacity: .5; cursor: default; }
+.tb-group { display: inline-flex; gap: 8px; align-items: center; }
 label.chk { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; cursor: pointer; user-select: none; }
 
-/* list */
-.group { margin-bottom: 18px; }
-.group h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px 4px; font-weight: 600; display: flex; gap: 8px; align-items: center; }
-.group h2 .n { color: var(--faint); font-weight: 500; }
+/* container list */
+.group { margin-bottom: 20px; }
+.ghead { display: flex; align-items: center; gap: 10px; margin: 0 4px 8px; min-height: 32px; }
+.ghead h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0; font-weight: 650; }
+.ghead .n { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ghead .dir { color: var(--faint); font-size: 12px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hue { width: 10px; height: 10px; border-radius: 3px; background: hsl(var(--h) var(--hs) var(--hl)); flex: none; transform: rotate(45deg); }
+.ghead .actions { opacity: .55; transition: opacity .15s; }
+.group:hover .ghead .actions, .ghead .actions:focus-within { opacity: 1; }
 .list { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
-.row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.3fr) auto; gap: 16px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+.list.proj { border-left: 3px solid hsl(var(--h) var(--hs) var(--hl)); }
+.row { position: relative; display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1.3fr) auto; gap: 16px; align-items: center; padding: 12px 16px; border-top: 1px solid var(--line); cursor: pointer; transition: background .12s; }
 .row:first-child { border-top: 0; }
-.row { position: relative; }
 .row::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); opacity: 0; transition: opacity .15s; }
 .row:hover { background: var(--panel-2); }
 .row:hover::before { opacity: 1; }
-.tag { color: var(--faint); }
-.skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--grey-soft), var(--panel-2), var(--grey-soft)); background-size: 200% 100%; animation: sk 1.2s infinite linear; }
-@keyframes sk { to { background-position: -200% 0; } }
 .name { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name .rep { color: var(--faint); font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .sub { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mono { font-family: var(--mono); font-size: 12.5px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--faint); }
+.tag { color: var(--faint); }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--faint); transition: background .3s, box-shadow .3s; }
 .dot.running { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
 .dot.paused, .dot.restarting { background: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
 .dot.dead { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
@@ -125,16 +136,19 @@ a.pill:hover { text-decoration: underline; }
 .pill.amber { background: var(--amber-soft); color: var(--amber); }
 .pill.red { background: var(--red-soft); color: var(--red); }
 .actions { display: flex; gap: 2px; }
-.icon { border: 0; background: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: background .12s, color .12s; }
+.icon { border: 0; background: none; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; cursor: pointer; color: var(--muted); transition: background .12s, color .12s; flex: none; }
 .icon:hover { background: var(--grey-soft); color: var(--text); }
 .icon.go:hover { color: var(--green); background: var(--green-soft); }
 .icon.warn:hover { color: var(--amber); background: var(--amber-soft); }
 .icon.bad:hover { color: var(--red); background: var(--red-soft); }
 .icon:disabled { opacity: .3; pointer-events: none; }
+.icon.sm { width: 24px; height: 24px; border-radius: 6px; }
 .empty { padding: 48px 16px; text-align: center; color: var(--muted); }
+.skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--grey-soft), var(--panel-2), var(--grey-soft)); background-size: 200% 100%; animation: sk 1.2s infinite linear; }
+@keyframes sk { to { background-position: -200% 0; } }
 @media (max-width: 720px) {
   .row { grid-template-columns: minmax(0, 1fr) auto; }
-  .row .hide-sm { display: none; }
+  .hide-sm { display: none; }
 }
 
 /* drawer */
@@ -143,37 +157,82 @@ a.pill:hover { text-decoration: underline; }
 .drawer {
   position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100vw); background: var(--bg); z-index: 11;
   box-shadow: var(--shadow-lg); transform: translateX(105%); transition: transform .25s cubic-bezier(.2,.8,.2,1);
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; visibility: hidden;
 }
-.drawer.on { transform: none; }
+.drawer.on { transform: none; visibility: visible; }
 .dhead { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .dhead h3 { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dbody { overflow-y: auto; padding: 18px 20px 30px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
 .card h4 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; gap: 10px; }
 .card h4 .spacer { flex: 1; }
+.card h4 label { text-transform: none; letter-spacing: 0; }
+.card select { width: auto; padding: 4px 8px; font-size: 12.5px; }
 .meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 @media (max-width: 600px) { .meters { grid-template-columns: repeat(2, 1fr); } }
 .meter .k { font-size: 12px; color: var(--muted); }
 .meter .v { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.meter .v small { font-size: 12px; font-weight: 400; color: var(--muted); }
 .spark { display: block; width: 100%; height: 34px; margin-top: 6px; overflow: visible; }
 .spark path.l { fill: none; stroke: var(--accent); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
 .spark path.f { fill: var(--accent); opacity: .14; }
-.bar { height: 5px; border-radius: 9px; background: var(--grey-soft); margin-top: 6px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--accent); border-radius: 9px; transition: width .4s; }
 dl { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 7px 14px; margin: 0; }
 dt { color: var(--muted); }
-dd { margin: 0; word-break: break-word; }
+dd { margin: 0; word-break: break-word; display: flex; align-items: flex-start; gap: 6px; flex-wrap: wrap; }
+dd .grow { flex: 1; min-width: 0; }
 .logs {
   background: #0b0c10; color: #d6dae2; border-radius: 10px; padding: 12px 14px; height: 420px; overflow: auto;
   font-family: var(--mono); font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-all; margin: 0;
 }
 .logs .ts { color: #5d6575; }
+.logs:not(.ts-on) .ts { display: none; }
 .logs .e { color: #ff8f8a; }
 .logs .w { color: #f3c26b; }
-.card h4 label { text-transform: none; letter-spacing: 0; }
-.card select { width: auto; padding: 4px 8px; font-size: 12.5px; }
+.logs .note { color: #6d7586; font-style: italic; }
 .envlist { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; margin: 0; color: var(--muted); }
+
+/* learn */
+.learn { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 820px) { .learn { grid-template-columns: 1fr; } }
+.lnav { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 2px; }
+.lnav a { display: grid; grid-template-columns: 26px 1fr; gap: 8px; padding: 8px 10px; border-radius: 10px; color: var(--muted); text-decoration: none; transition: background .15s, color .15s; }
+.lnav a:hover { background: var(--panel-2); color: var(--text); }
+.lnav a.on { background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.lnav .num { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; font-size: 11px; font-weight: 650; color: #fff; background: hsl(var(--h) var(--hs) var(--hl)); }
+.lnav small { display: block; color: var(--faint); font-size: 11.5px; }
+.lnav .src { margin-top: 14px; padding: 0 10px; font-size: 11.5px; color: var(--faint); }
+.lnav .src a { display: inline; padding: 0; color: var(--accent); }
+.doc { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); padding: 40px 48px 48px; max-width: 820px; line-height: 1.7; font-size: 15px; animation: fade .3s ease-out; }
+@media (max-width: 600px) { .doc { padding: 24px 20px; } }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } }
+.doc .kicker { font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; color: hsl(var(--h) var(--hs) var(--hl)); }
+.doc h1 { font-size: 32px; line-height: 1.15; letter-spacing: -.025em; margin: 6px 0 14px; font-weight: 700; }
+.doc h1 + p { font-size: 17px; color: var(--muted); }
+.doc h2 { font-size: 20px; letter-spacing: -.01em; margin: 36px 0 8px; }
+.doc h3 { font-size: 16px; margin: 26px 0 6px; }
+.doc p, .doc ul, .doc ol { margin: 0 0 14px; }
+.doc li { margin: 4px 0; }
+.doc a { color: var(--accent); }
+.doc code { font-family: var(--mono); font-size: .88em; background: var(--grey-soft); padding: 1px 6px; border-radius: 5px; }
+.doc .code { position: relative; margin: 0 0 18px; }
+.doc pre { background: #0b0c10; color: #e3e6ec; border-radius: 12px; padding: 16px 18px; overflow-x: auto; margin: 0; font-size: 13px; line-height: 1.6; }
+.doc pre code { background: none; padding: 0; font-size: inherit; }
+.doc .code .lang { position: absolute; top: 8px; left: 14px; font-size: 10.5px; color: #6d7586; text-transform: uppercase; letter-spacing: .06em; }
+.doc .code .lang + pre { padding-top: 28px; }
+.copy { position: absolute; top: 8px; right: 8px; border: 1px solid #2a2e37; background: #16181d; color: #b7bcc6; border-radius: 7px; padding: 3px 9px; font-size: 12px; cursor: pointer; opacity: .8; transition: opacity .15s, color .15s; }
+.copy:hover { opacity: 1; color: #fff; }
+.copy.done { color: #3ecf8e; }
+.doc figure { margin: 22px 0; text-align: center; }
+.doc figure img { max-width: 100%; border-radius: 12px; }
+.doc figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.doc img:not([src]) { min-height: 120px; width: 100%; background: var(--panel-2); }
+.doc aside { border-left: 3px solid hsl(var(--h) var(--hs) var(--hl)); background: var(--panel-2); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 0 0 16px; }
+.doc table { border-collapse: collapse; width: 100%; margin: 0 0 18px; font-size: 14px; }
+.doc th, .doc td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.doc th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.doc .next { display: flex; justify-content: space-between; gap: 12px; margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); }
+.doc .next a { text-decoration: none; font-weight: 600; }
+.doc .next small { display: block; color: var(--faint); font-weight: 400; }
 
 /* modal + toast */
 .modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 30; background: rgba(10,12,16,.45); }
@@ -186,20 +245,18 @@ dd { margin: 0; word-break: break-word; }
 .toast { background: var(--text); color: var(--bg); padding: 9px 14px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: 13px; animation: up .2s ease-out; max-width: 90vw; }
 .toast.err { background: var(--red); color: #fff; }
 @keyframes up { from { transform: translateY(8px); opacity: 0; } }
-.spin { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></div>
-    <div class="brand"><h1 id="host">contraire</h1><p id="hostsub">connecting…</p></div>
+    <div class="logo" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></div>
+    <div class="brand"><h1 id="brand">&nbsp;</h1><p id="hostsub">connecting…</p></div>
     <div class="spacer"></div>
-    <span class="live" id="live"><i></i><span>live</span></span>
+    <span class="live off" id="live" role="status"><i></i><span>connecting</span></span>
   </header>
 
-  <section class="tiles">
+  <section class="tiles" aria-label="Summary">
     <div class="tile"><div class="k">Running</div><div class="v" id="t-run">–</div><div class="comp" id="t-comp"></div></div>
     <div class="tile"><div class="k">Stopped</div><div class="v" id="t-stop">–</div><div class="s" id="t-stop-s">&nbsp;</div></div>
     <div class="tile"><div class="k">Images</div><div class="v" id="t-img">–</div><div class="s" id="t-img-s">&nbsp;</div></div>
@@ -207,36 +264,41 @@ dd { margin: 0; word-break: break-word; }
   </section>
 
   <div class="toolbar">
-    <div class="tabs">
-      <button class="on" data-tab="containers">Containers<span class="n" id="n-c"></span></button>
-      <button data-tab="images">Images<span class="n" id="n-i"></span></button>
+    <div class="tabs" role="tablist">
+      <button class="on" data-tab="containers" role="tab">Containers<span class="n" id="n-c"></span></button>
+      <button data-tab="images" role="tab">Images<span class="n" id="n-i"></span></button>
+      <button data-tab="learn" role="tab">Learn</button>
     </div>
-    <div class="search">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input type="text" id="q" placeholder="Filter by name, image, port…  ( / )" autocomplete="off">
+    <div class="search" id="searchbox">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="text" id="q" placeholder="Filter by name, image, project, port…  ( / )" autocomplete="off" aria-label="Filter">
     </div>
-    <span id="tb-containers"><label class="chk"><input type="checkbox" id="showall" checked> show stopped</label></span>
-    <span id="tb-images" style="display:none;gap:8px">
+    <span class="tb-group" id="tb-containers"><label class="chk"><input type="checkbox" id="showall" checked> show stopped</label></span>
+    <span class="tb-group" id="tb-images" hidden>
       <button class="btn primary" id="pull">Pull image</button>
       <button class="btn" id="prune">Prune dangling</button>
     </span>
   </div>
 
-  <main id="view"><div class="list"><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:55%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div><div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:45%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div></div></main>
+  <main id="view"><div class="list">
+    <div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:55%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div>
+    <div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:70%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div>
+    <div class="row" style="cursor:default"><div class="name"><span class="dot"></span><div style="flex:1"><div class="skel" style="width:45%"></div><div class="skel" style="width:40%;margin-top:8px;height:9px"></div></div></div><div class="skel hide-sm"></div><div class="hide-sm"></div><div></div></div>
+  </div></main>
 </div>
 
 <div class="scrim" id="scrim"></div>
-<aside class="drawer" id="drawer" aria-hidden="true">
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="d-name">
   <div class="dhead">
     <span class="dot" id="d-dot"></span>
     <div style="min-width:0;flex:1"><h3 id="d-name"></h3><div class="sub mono" id="d-image"></div></div>
     <div class="actions" id="d-actions"></div>
-    <button class="icon" id="d-close" title="Close (Esc)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    <button class="icon" id="d-close" title="Close (Esc)" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
   </div>
   <div class="dbody" id="dbody"></div>
 </aside>
 
-<div class="modal" id="modal" hidden>
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
   <div class="box">
     <h3 id="m-title"></h3>
     <p id="m-text"></p>
@@ -244,7 +306,7 @@ dd { margin: 0; word-break: break-word; }
     <div class="row2"><button class="btn" id="m-cancel">Cancel</button><button class="btn primary" id="m-ok">OK</button></div>
   </div>
 </div>
-<div class="toasts" id="toasts"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
 "use strict";
@@ -256,9 +318,11 @@ const I = {
   restart: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
-  logs: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
 };
-const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const copyBtn = (text, label = "Copy") => `<button class="icon sm" data-copy="${esc(text)}" title="${label}" aria-label="${label}">${icon("copy", 13)}</button>`;
+const hue = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
 
 const fmtBytes = b => {
   if (b == null || isNaN(b)) return "–";
@@ -280,9 +344,8 @@ async function api(path, opts = {}) {
     try { msg = (await r.json()).message || msg; } catch {}
     throw new Error(msg);
   }
-  const ct = r.headers.get("content-type") || "";
   if (r.status === 204) return null;
-  return ct.includes("json") ? r.json() : r.text();
+  return (r.headers.get("content-type") || "").includes("json") ? r.json() : r.text();
 }
 
 function toast(msg, err) {
@@ -293,8 +356,18 @@ function toast(msg, err) {
   setTimeout(() => el.remove(), err ? 6000 : 3000);
 }
 
+/* Clipboard API needs a secure context; plain http on a LAN falls back to execCommand. */
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = Object.assign(document.createElement("textarea"), { value: text });
+  ta.style.cssText = "position:fixed;opacity:0";
+  document.body.append(ta); ta.select();
+  const ok = document.execCommand("copy"); ta.remove(); return ok;
+}
+
 function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
   return new Promise(res => {
+    const prev = document.activeElement;
     $("#m-title").textContent = title;
     $("#m-text").textContent = text;
     $("#m-extra").innerHTML = extra;
@@ -306,6 +379,7 @@ function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
     const done = v => {
       $("#modal").hidden = true;
       okb.onclick = $("#m-cancel").onclick = $("#modal").onkeydown = null;
+      prev?.focus?.();
       res(v);
     };
     okb.onclick = () => done(first ? first.value : true);
@@ -315,9 +389,12 @@ function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
 }
 
 /* ---------- state ---------- */
-const S = { tab: "containers", containers: [], images: [], info: null, busy: new Set(), open: null };
-
+const S = { tab: "containers", containers: [], images: [], info: null, cfg: null, busy: new Set(), open: null, hist: { cpu: [], mem: [] } };
+const L = (c, k) => c.Labels?.[k];
+const PROJ = "com.docker.compose.project";
 const cname = c => (c.Names?.[0] || c.Id.slice(0, 12)).replace(/^\//, "");
+const isErr = c => c.State === "dead" || (c.State === "exited" && !/\(0\)/.test(c.Status));
+const stateClass = c => S.busy.has(c.Id) ? "busy" : isErr(c) ? "dead" : c.State;
 const ports = c => {
   const seen = new Set(), out = [];
   for (const p of c.Ports || []) {
@@ -338,15 +415,22 @@ const imageHtml = img => {
   const m = String(img).match(/^(.*?)(:[^:/@]+)?(@sha256:.*)?$/);
   return esc(m[1]) + (m[2] ? `<span class="tag">${esc(m[2])}</span>` : "") + (m[3] ? `<span class="tag">@${esc(m[3].slice(8, 20))}</span>` : "");
 };
+const HEALTH = /\((healthy|unhealthy|health: starting)\)/;
 const healthPill = c => {
-  const h = (c.Status.match(/\((healthy|unhealthy|health: starting)\)/) || [])[1];
+  const h = (c.Status.match(HEALTH) || [])[1];
   return h ? ` <span class="pill ${h === "healthy" ? "green" : h === "unhealthy" ? "red" : "amber"}" style="margin:0 0 0 4px;font-size:11px">${h.replace("health: ", "")}</span>` : "";
 };
-const stateClass = c => S.busy.has(c.Id) ? "busy" : c.State === "exited" && !/\(0\)/.test(c.Status) ? "dead" : c.State;
+/* Compose service name, with "#n" when a service runs several replicas. */
+function displayName(c, all) {
+  const svc = L(c, "com.docker.compose.service");
+  if (!svc || L(c, "com.docker.compose.oneoff") === "True") return esc(cname(c));
+  const reps = all.filter(x => L(x, PROJ) === L(c, PROJ) && L(x, "com.docker.compose.service") === svc).length;
+  return esc(svc) + (reps > 1 ? `<span class="rep">#${esc(L(c, "com.docker.compose.container-number") || "?")}</span>` : "");
+}
 
 function actionButtons(c) {
   const st = c.State, b = S.busy.has(c.Id) ? "disabled" : "";
-  const btn = (a, n, cls, title) => `<button class="icon ${cls}" data-act="${a}" data-id="${esc(c.Id)}" title="${title}" ${b}>${icon(n)}</button>`;
+  const btn = (a, n, cls, title) => `<button class="icon ${cls}" data-act="${a}" data-id="${esc(c.Id)}" title="${title}" aria-label="${title}" ${b}>${icon(n)}</button>`;
   return (st === "running"
       ? btn("restart", "restart", "warn", "Restart") + btn("pause", "pause", "warn", "Pause") + btn("stop", "stop", "bad", "Stop")
       : st === "paused"
@@ -359,32 +443,39 @@ function renderContainers() {
   const q = $("#q").value.trim().toLowerCase();
   const all = $("#showall").checked;
   const list = S.containers.filter(c => (all || c.State === "running" || c.State === "paused" || S.busy.has(c.Id)) &&
-    (!q || [cname(c), c.Image, c.Status, ...(c.Ports || []).map(p => p.PublicPort)].join(" ").toLowerCase().includes(q)));
+    (!q || [cname(c), c.Image, c.Status, L(c, PROJ), L(c, "com.docker.compose.service"), ...(c.Ports || []).map(p => p.PublicPort)].join(" ").toLowerCase().includes(q)));
 
   if (!list.length) {
-    $("#view").innerHTML = `<div class="list"><div class="empty">${S.containers.length ? "No containers match." : "No containers yet."}</div></div>`;
+    $("#view").innerHTML = `<div class="list"><div class="empty">${S.containers.length ? "No containers match." : "No containers yet. Start one with <code>docker run</code>, or open <b>Learn</b> to see how."}</div></div>`;
     return;
   }
   const groups = new Map();
   for (const c of list) {
-    const g = c.Labels?.["com.docker.compose.project"] || "";
+    const g = L(c, PROJ) || "";
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push(c);
   }
   const order = [...groups.keys()].sort((a, b) => (a === "") - (b === "") || a.localeCompare(b));
   const rank = c => c.State === "running" ? 0 : c.State === "paused" ? 1 : 2;
+  const pbtn = (p, a, n, cls, t) => `<button class="icon sm ${cls}" data-proj="${esc(p)}" data-pact="${a}" title="${t}" aria-label="${t}">${icon(n, 14)}</button>`;
   $("#view").innerHTML = order.map(g => {
     const cs = groups.get(g).sort((a, b) => rank(a) - rank(b) || cname(a).localeCompare(cname(b)));
-    const up = cs.filter(c => c.State === "running").length;
-    return `<div class="group">
-      ${order.length > 1 || g ? `<h2>${g ? esc(g) : "standalone"}<span class="n">${up}/${cs.length} up</span></h2>` : ""}
-      <div class="list">${cs.map(c => `
-        <div class="row" data-open="${esc(c.Id)}">
-          <div class="name"><span class="dot ${stateClass(c)}"></span><div style="min-width:0"><b>${esc(cname(c))}</b><div class="sub">${esc(c.Status.replace(/ \((healthy|unhealthy|health: starting)\)/, ""))}${healthPill(c)}</div></div></div>
+    const total = S.containers.filter(c => (L(c, PROJ) || "") === g);
+    const up = total.filter(c => c.State === "running").length;
+    const dir = g && L(cs[0], "com.docker.compose.project.working_dir");
+    const head = g
+      ? `<div class="ghead"><span class="hue" style="--h:${hue(g)}"></span><h2>${esc(g)}</h2><span class="n">${up}/${total.length} running</span>
+         ${dir ? `<span class="dir hide-sm" title="${esc(L(cs[0], "com.docker.compose.project.config_files") || dir)}">${esc(dir)}</span>` : ""}
+         <span class="spacer"></span><span class="actions">${pbtn(g, "start", "play", "go", `Start all in ${g}`)}${pbtn(g, "restart", "restart", "warn", `Restart ${g}`)}${pbtn(g, "stop", "stop", "bad", `Stop all in ${g}`)}</span></div>`
+      : order.length > 1 ? `<div class="ghead"><h2>Standalone</h2><span class="n">${up}/${total.length} running</span></div>` : "";
+    return `<section class="group">${head}
+      <div class="list${g ? " proj" : ""}" style="--h:${hue(g)}">${cs.map(c => `
+        <div class="row" data-open="${esc(c.Id)}" tabindex="0" title="${esc(cname(c))}">
+          <div class="name"><span class="dot ${stateClass(c)}"></span><div style="min-width:0"><b>${displayName(c, S.containers)}</b><div class="sub">${esc(c.Status.replace(HEALTH, "").trim())}${healthPill(c)}</div></div></div>
           <div class="sub mono hide-sm" title="${esc(c.Image)}">${imageHtml(c.Image)}</div>
           <div class="hide-sm">${portPills(c)}</div>
           <div class="actions">${actionButtons(c)}</div>
-        </div>`).join("")}</div></div>`;
+        </div>`).join("")}</div></section>`;
   }).join("");
 }
 
@@ -404,11 +495,11 @@ function renderImages() {
     const n = used.get(i.Id) || 0;
     return `<div class="row" style="cursor:default">
       <div class="name"><span class="dot ${n ? "running" : ""}"></span><div style="min-width:0">
-        <b>${i.tags.length ? esc(i.tags[0]) : '<span style="color:var(--faint)">&lt;untagged&gt;</span>'}</b>
+        <b>${i.tags.length ? imageHtml(i.tags[0]) : '<span style="color:var(--faint)">&lt;untagged&gt;</span>'}</b>
         <div class="sub mono">${esc(i.Id.replace("sha256:", "").slice(0, 12))}${i.tags.length > 1 ? " · +" + (i.tags.length - 1) + " tags" : ""}</div></div></div>
       <div class="sub hide-sm">${fmtBytes(i.Size)} · ${ago(i.Created)}</div>
       <div class="hide-sm">${n ? `<span class="pill green">used by ${n}</span>` : `<span class="pill">unused</span>`}</div>
-      <div class="actions"><button class="icon bad" data-rmi="${esc(i.Id)}" data-label="${esc(i.tags[0] || i.Id.slice(7, 19))}" title="${n ? "In use" : "Remove"}" ${n ? "disabled" : ""}>${icon("trash")}</button></div>
+      <div class="actions"><button class="icon bad" data-rmi="${esc(i.Id)}" data-label="${esc(i.tags[0] || i.Id.slice(7, 19))}" title="${n ? "In use" : "Remove"}" aria-label="Remove image" ${n ? "disabled" : ""}>${icon("trash")}</button></div>
     </div>`;
   }).join("")}</div>`;
 }
@@ -416,42 +507,91 @@ function renderImages() {
 function render() {
   $("#n-c").textContent = S.containers.length || "";
   $("#n-i").textContent = S.images.length || "";
-  (S.tab === "containers" ? renderContainers : renderImages)();
+  if (S.tab === "containers") renderContainers();
+  else if (S.tab === "images") renderImages();
   const run = S.containers.filter(c => c.State === "running").length;
   const paused = S.containers.filter(c => c.State === "paused").length;
-  $("#t-run").textContent = run;
-  const errd = S.containers.filter(c => c.State === "exited" && !/\(0\)/.test(c.Status) || c.State === "dead").length;
+  const errd = S.containers.filter(isErr).length;
   const rest = S.containers.length - run - paused - errd;
-  $("#t-comp").innerHTML = [["g", run], ["a", paused], ["r", errd], ["x", rest]].filter(x => x[1]).map(([k, n]) => `<i class="${k}" style="flex-grow:${n}" title="${n}"></i>`).join("");
+  $("#t-run").textContent = run;
+  $("#t-comp").innerHTML = [["g", run], ["a", paused], ["r", errd], ["x", rest]].filter(x => x[1]).map(([k, n]) => `<i class="${k}" style="flex-grow:${n}"></i>`).join("");
   $("#t-stop").textContent = S.containers.length - run - paused;
-  const dead = S.containers.filter(c => c.State === "exited" && !/\(0\)/.test(c.Status)).length;
-  $("#t-stop-s").textContent = dead ? `${dead} exited with error` : " ";
+  $("#t-stop-s").textContent = errd ? `${errd} stopped unexpectedly` : " ";
   $("#t-img").textContent = S.images.length;
-  $("#t-img-s").textContent = fmtBytes(S.images.reduce((a, i) => a + i.Size, 0));
+  $("#t-img-s").textContent = fmtBytes(S.images.reduce((a, i) => a + i.Size, 0)) + " on disk";
   if (S.info) {
     const i = S.info;
-    $("#host").textContent = i.name || "docker";
-    $("#hostsub").textContent = `Docker ${i.version} · ${i.os}`;
+    $("#hostsub").textContent = `${i.name} · Docker ${i.version} · ${i.os}`;
     $("#t-host").textContent = `${i.cpus} CPU`;
     $("#t-host-s").textContent = `${fmtBytes(i.memory)} RAM · ${i.arch}`;
+  }
+  if (S.cfg) {
+    $("#brand").textContent = S.cfg.name;
+    document.title = (S.info ? S.info.name + " · " : "") + S.cfg.name;
   }
   if (S.open) refreshDrawerHead();
 }
 
-/* ---------- data ---------- */
-let refreshing = false;
-async function refresh() {
-  if (refreshing) return;
-  refreshing = true;
-  try {
-    const [c, i, info] = await Promise.all([api("/api/containers"), api("/api/images"), S.info ? null : api("/api/info")]);
-    S.containers = c; S.images = i; if (info) S.info = info;
-    $("#live").classList.remove("off"); $("#live span").textContent = "live";
-    render();
-  } catch (e) {
-    $("#live").classList.add("off"); $("#live span").textContent = "offline";
-    $("#hostsub").textContent = e.message;
-  } finally { refreshing = false; }
+/* ---------- data: pushed over one SSE stream, re-fetched on change ---------- */
+let refreshing = null;
+async function refresh(images = true) {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try {
+      const [c, i, info, cfg] = await Promise.all([
+        api("/api/containers"),
+        images || !S.images.length ? api("/api/images") : null,
+        S.info ? null : api("/api/info"),
+        S.cfg ? null : api("/api/config"),
+      ]);
+      S.containers = c; if (i) S.images = i; if (info) S.info = info; if (cfg) S.cfg = cfg;
+      render();
+    } catch (e) {
+      setLive(false, e.message);
+    } finally { refreshing = null; }
+  })();
+  return refreshing;
+}
+
+function setLive(on, msg) {
+  $("#live").classList.toggle("off", !on);
+  $("#live span").textContent = on ? "live" : "offline";
+  if (!on && msg) $("#hostsub").textContent = msg;
+}
+
+let es = null, esKey = null, evTimer = 0, evImages = false, reconnectTimer = 0;
+function connect(force) {
+  const tail = $("#d-tail")?.value || 300;
+  const key = S.open ? `${S.open}/${tail}` : "";
+  if (es && key === esKey && !force) return;
+  es?.close();
+  esKey = key;
+  es = new EventSource("/api/stream" + (S.open ? `?c=${encodeURIComponent(S.open)}&tail=${tail}` : ""));
+  es.onopen = () => {
+    setLive(true);
+    // The server replays the log tail on every (re)connect.
+    if (S.open) { resetLogs(); S.hist = { cpu: [], mem: [] }; }
+    refresh();
+  };
+  es.onerror = () => setLive(false);
+  es.addEventListener("docker", e => onDocker(JSON.parse(e.data)));
+  es.addEventListener("stats", e => onStats(JSON.parse(e.data)));
+  es.addEventListener("logs", e => appendLogs(e.data.split("\n")));
+  es.addEventListener("logend", endLogs);
+}
+
+function onDocker(ev) {
+  if (ev.t === "image" || ev.a === "create" || ev.a === "destroy") evImages = true;
+  clearTimeout(evTimer);
+  evTimer = setTimeout(() => { const im = evImages; evImages = false; refresh(im); }, 120);
+  if (ev.t === "container" && S.open && ev.id === S.open) {
+    if (ev.a === "destroy") return closeDrawer();
+    setTimeout(loadDetail, 150);
+    if (/^(start|restart|unpause)$/.test(ev.a)) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => connect(true), 300);
+    }
+  }
 }
 
 async function act(id, action) {
@@ -467,16 +607,29 @@ async function act(id, action) {
   try {
     await api(path, { method });
     toast(`${label}: ${action === "remove" ? "removed" : action + (action.endsWith("e") ? "d" : "ed")}`);
-    if (action === "remove" && S.open === id) closeDrawer();
   } catch (e) { toast(`${label}: ${e.message}`, true); }
   S.busy.delete(id);
-  await refresh();
-  if (S.open === id) loadDetail();
+  refresh();
+}
+
+async function projectAct(project, action) {
+  if (action !== "start" && !await ask({
+    title: `${action === "stop" ? "Stop" : "Restart"} everything in ${project}?`,
+    text: "Services are handled in dependency order: dependencies start first and stop last.",
+    ok: action === "stop" ? "Stop all" : "Restart all", danger: action === "stop",
+  })) return;
+  const members = S.containers.filter(c => L(c, PROJ) === project);
+  members.forEach(c => S.busy.add(c.Id)); render();
+  try {
+    const r = await api(`/api/projects/${encodeURIComponent(project)}/${action}`, { method: "POST" });
+    if (r.failed.length) toast(`${project}: ${r.failed.map(f => `${f.name}: ${f.message}`).join("; ")}`, true);
+    else toast(`${project}: ${r.count} container${r.count === 1 ? "" : "s"} ${action === "stop" ? "stopped" : action + "ed"}`);
+  } catch (e) { toast(`${project}: ${e.message}`, true); }
+  members.forEach(c => S.busy.delete(c.Id));
+  refresh();
 }
 
 /* ---------- drawer ---------- */
-let drawerTimer = null, logTimer = null;
-
 function refreshDrawerHead() {
   const c = S.containers.find(x => x.Id === S.open);
   if (!c) return;
@@ -491,129 +644,298 @@ function openDrawer(id) {
   S.hist = { cpu: [], mem: [] };
   history.replaceState(null, "", "#c/" + id);
   $("#dbody").innerHTML = `
-    <div class="card"><h4>Live</h4><div class="meters" id="d-stats">
-      ${["CPU", "Memory", "Network ↓ / ↑", "Processes"].map(k => `<div class="meter"><div class="k">${k}</div><div class="v">–</div></div>`).join("")}
-    </div></div>
+    <div class="card"><h4>Live</h4><div class="meters" id="d-stats">${meters(null)}</div></div>
     <div class="card"><h4>Overview</h4><div id="d-info"><div class="sub">Loading…</div></div></div>
     <div class="card"><h4>Logs<span class="spacer"></span>
       <label class="chk"><input type="checkbox" id="d-follow" checked> follow</label>
       <label class="chk"><input type="checkbox" id="d-ts"> timestamps</label>
-      <select id="d-tail"><option>100</option><option selected>300</option><option>1000</option><option>5000</option></select>
-    </h4><pre class="logs" id="d-logs">Loading…</pre></div>
+      <select id="d-tail" aria-label="Lines"><option>100</option><option selected>300</option><option>1000</option><option>5000</option></select>
+    </h4><div class="logs" id="d-logs" role="log"><div class="note">Connecting…</div></div></div>
     <div class="card"><h4>Environment<span class="spacer"></span><button class="btn" id="d-envbtn" style="padding:3px 10px;font-size:12px">Reveal</button></h4><pre class="envlist" id="d-env">Hidden — may contain secrets.</pre></div>`;
-  $("#d-tail").onchange = $("#d-ts").onchange = () => loadLogs(true);
-  $("#d-follow").onchange = () => $("#d-follow").checked && loadLogs(true);
+  $("#d-tail").onchange = () => connect();
+  $("#d-ts").onchange = () => $("#d-logs").classList.toggle("ts-on", $("#d-ts").checked);
+  $("#d-follow").onchange = () => { if ($("#d-follow").checked) { const el = $("#d-logs"); el.scrollTop = el.scrollHeight; } };
   refreshDrawerHead();
   $("#drawer").classList.add("on"); $("#scrim").classList.add("on");
   $("#drawer").setAttribute("aria-hidden", "false");
-  loadDetail(); loadLogs(true); loadStats();
-  clearInterval(drawerTimer); clearInterval(logTimer);
-  drawerTimer = setInterval(loadStats, 3000);
-  logTimer = setInterval(() => $("#d-follow")?.checked && loadLogs(false), 2500);
+  loadDetail();
+  connect();
+  $("#d-close").focus();
 }
 
 function closeDrawer() {
+  if (!S.open) return;
+  const id = S.open;
   S.open = null;
-  history.replaceState(null, "", location.pathname);
-  clearInterval(drawerTimer); clearInterval(logTimer);
+  history.replaceState(null, "", S.tab === "learn" ? location.hash : location.pathname);
   $("#drawer").classList.remove("on"); $("#scrim").classList.remove("on");
   $("#drawer").setAttribute("aria-hidden", "true");
+  connect();
+  document.querySelector(`[data-open="${CSS.escape(id)}"]`)?.focus();
 }
 
-let detail = null;
 async function loadDetail() {
   const id = S.open;
+  if (!id) return;
   try {
     const d = await api(`/api/containers/${id}`);
     if (S.open !== id) return;
-    detail = d;
     const st = d.State || {};
+    const lb = d.Config?.Labels || {};
     const statePill = st.Running ? (st.Paused ? "amber" : "green") : (st.ExitCode ? "red" : "");
     const nets = Object.entries(d.NetworkSettings?.Networks || {});
     const mounts = d.Mounts || [];
     const rp = d.HostConfig?.RestartPolicy;
     const cmd = [...(d.Config?.Entrypoint || []), ...(d.Config?.Cmd || [])].join(" ");
     const c = S.containers.find(x => x.Id === id);
+    const stopped = !st.Running && st.FinishedAt?.[0] !== "0";
+    const exitHint = { 0: "finished normally", 1: "application error", 125: "docker could not run it", 126: "command not executable", 127: "command not found", 137: "killed (out of memory or force-stopped)", 139: "crashed (segfault)", 143: "stopped politely (SIGTERM)" }[st.ExitCode];
     const rows = [
-      ["State", `<span class="pill ${statePill}">${esc(st.Status)}${!st.Running && st.FinishedAt?.[0] !== "0" ? ` · exit ${st.ExitCode}` : ""}</span>${st.Health ? `<span class="pill ${st.Health.Status === "healthy" ? "green" : st.Health.Status === "unhealthy" ? "red" : "amber"}">${esc(st.Health.Status)}</span>` : ""}${st.OOMKilled ? '<span class="pill red">OOM killed</span>' : ""}`],
-      ["Started", st.Running ? esc(new Date(st.StartedAt).toLocaleString()) : (st.FinishedAt?.[0] !== "0" ? "stopped " + esc(new Date(st.FinishedAt).toLocaleString()) : "never")],
-      ["Restart", `${esc(rp?.Name || "no")}${d.RestartCount ? ` · ${d.RestartCount} restarts` : ""}`],
-      ["ID", `<span class="mono">${esc(d.Id.slice(0, 12))}</span>`],
-      ["Command", `<span class="mono">${esc(cmd) || "–"}</span>`],
+      ["State", `<span class="pill ${statePill}">${esc(st.Status)}${stopped ? ` · exit ${st.ExitCode}` : ""}</span>${stopped && exitHint ? `<span class="sub">${exitHint}</span>` : ""}${st.Health ? `<span class="pill ${st.Health.Status === "healthy" ? "green" : st.Health.Status === "unhealthy" ? "red" : "amber"}">${esc(st.Health.Status)}</span>` : ""}${st.OOMKilled ? '<span class="pill red">ran out of memory</span>' : ""}`],
+      ["Started", st.Running ? esc(new Date(st.StartedAt).toLocaleString()) : (stopped ? "stopped " + esc(new Date(st.FinishedAt).toLocaleString()) : "never")],
+      ["Restart policy", `${esc(rp?.Name || "no")}${d.RestartCount ? ` · ${d.RestartCount} restarts` : ""}`],
+      ["ID", `<span class="mono">${esc(d.Id.slice(0, 12))}</span>${copyBtn(d.Id, "Copy full ID")}`],
+      ["Command", `<span class="mono grow">${esc(cmd) || "–"}</span>${cmd ? copyBtn(cmd, "Copy command") : ""}`],
       ["Ports", c && ports(c).length ? portPills(c, 99) : "–"],
       ["Networks", nets.map(([n, v]) => `<span class="pill">${esc(n)}${v.IPAddress ? " · " + esc(v.IPAddress) : ""}</span>`).join("") || "–"],
-      ["Mounts", mounts.map(m => `<div class="mono">${esc(m.Name || m.Source)} → ${esc(m.Destination)}${m.RW ? "" : " (ro)"}</div>`).join("") || "–"],
+      ["Mounts", mounts.map(m => `<div class="mono">${esc(m.Name || m.Source)} → ${esc(m.Destination)}${m.RW ? "" : " (read-only)"}</div>`).join("") || "–"],
     ];
+    const proj = lb[PROJ];
+    if (proj) {
+      const deps = (lb["com.docker.compose.depends_on"] || "").split(",").map(s => s.split(":")[0]).filter(Boolean);
+      const files = lb["com.docker.compose.project.config_files"];
+      rows.push(
+        ["Compose", `<span class="hue" style="--h:${hue(proj)};margin-top:6px"></span><b>${esc(proj)}</b><span class="sub">service <b>${esc(lb["com.docker.compose.service"])}</b>${lb["com.docker.compose.container-number"] ? " #" + esc(lb["com.docker.compose.container-number"]) : ""}</span>`],
+        ["Depends on", deps.length ? deps.map(x => `<span class="pill">${esc(x)}</span>`).join("") : "–"],
+        ["Compose file", files ? `<span class="mono grow">${esc(files)}</span>${copyBtn(`cd ${lb["com.docker.compose.project.working_dir"] || "."} && docker compose -p ${proj} up -d`, "Copy 'compose up' command")}` : "–"],
+      );
+    }
     $("#d-info").innerHTML = `<dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
-    $("#d-envbtn").onclick = () => {
+    const envBtn = $("#d-envbtn");
+    if (envBtn) envBtn.onclick = () => {
       const env = d.Config?.Env || [];
       $("#d-env").textContent = env.length ? env.sort().join("\n") : "No environment variables.";
       $("#d-env").style.color = "var(--text)";
-      $("#d-envbtn").remove();
+      envBtn.remove();
     };
+    if (!st.Running) $("#d-stats").innerHTML = meters(null);
   } catch (e) { $("#d-info").innerHTML = `<div class="sub">${esc(e.message)}</div>`; }
-}
-
-async function loadStats() {
-  const id = S.open;
-  const c = S.containers.find(x => x.Id === id);
-  const set = (vals) => {
-    const el = $("#d-stats"); if (!el || S.open !== id) return;
-    el.innerHTML = vals.map(([k, v, pct, hist]) => `<div class="meter"><div class="k">${k}</div><div class="v">${v}</div>${
-      hist && hist.length > 1 ? spark(hist) : pct != null ? `<div class="bar"><i style="width:${Math.min(100, pct).toFixed(1)}%"></i></div>` : ""}</div>`).join("");
-  };
-  if (!c || c.State !== "running") {
-    set([["CPU", "–"], ["Memory", "–"], ["Network ↓ / ↑", "–"], ["Processes", "–"]]);
-    return;
-  }
-  try {
-    const s = await api(`/api/containers/${id}/stats`);
-    const cpus = S.info?.cpus || 1;
-    const memPct = s.mem != null && s.mem_limit ? s.mem / s.mem_limit * 100 : null;
-    const H = S.hist;
-    if (s.cpu != null) H.cpu.push(s.cpu); if (s.mem != null) H.mem.push(s.mem);
-    if (H.cpu.length > 40) H.cpu.shift(); if (H.mem.length > 40) H.mem.shift();
-    set([
-      ["CPU", s.cpu != null ? s.cpu.toFixed(1) + "%" : "–", s.cpu != null ? s.cpu / cpus : null, H.cpu],
-      ["Memory", fmtBytes(s.mem) + (memPct != null && memPct < 99 ? ` <span class="sub" style="font-size:12px;font-weight:400">${memPct.toFixed(1)}%</span>` : ""), memPct, H.mem],
-      ["Network ↓ / ↑", `<span style="font-size:14px">${fmtBytes(s.rx)} / ${fmtBytes(s.tx)}</span>`],
-      ["Processes", s.pids ?? "–"],
-    ]);
-  } catch {}
 }
 
 function spark(v) {
   const W = 100, Hh = 30, max = Math.max(...v) * 1.2 || 1;
   const pts = v.map((y, i) => [i / (v.length - 1) * W, Hh - y / max * Hh]);
   const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join("");
-  return `<svg class="spark" viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none"><path class="f" d="${d}L${W} ${Hh}L${pts[0][0].toFixed(1)} ${Hh}Z"/><path class="l" d="${d}"/></svg>`;
+  return `<svg class="spark" viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" aria-hidden="true"><path class="f" d="${d}L${W} ${Hh}L0 ${Hh}Z"/><path class="l" d="${d}"/></svg>`;
 }
-const LOG_RE = /^(\d{4}-\d\d-\d\dT[\d:.]+Z) ?/;
-async function loadLogs(force) {
-  const id = S.open, el = $("#d-logs");
+
+function meters(s) {
+  const H = S.hist;
+  const memPct = s?.mem != null && s.mem_limit ? s.mem / s.mem_limit * 100 : null;
+  const vals = s ? [
+    ["CPU", s.cpu != null ? s.cpu.toFixed(1) + "%" : "–", H.cpu],
+    ["Memory", fmtBytes(s.mem) + (memPct != null && memPct < 99 ? ` <small>${memPct.toFixed(1)}%</small>` : ""), H.mem],
+    ["Network in / out", `<span style="font-size:14px">${fmtBytes(s.rx)} / ${fmtBytes(s.tx)}</span>`],
+    ["Processes", s.pids ?? "–"],
+  ] : [["CPU", "–"], ["Memory", "–"], ["Network in / out", "–"], ["Processes", "–"]];
+  return vals.map(([k, v, h]) => `<div class="meter"><div class="k">${k}</div><div class="v">${v}</div>${h && h.length > 1 ? spark(h) : ""}</div>`).join("");
+}
+
+function onStats(s) {
+  const H = S.hist;
+  if (s.cpu != null) H.cpu.push(s.cpu);
+  if (s.mem != null) H.mem.push(s.mem);
+  if (H.cpu.length > 60) H.cpu.shift();
+  if (H.mem.length > 60) H.mem.shift();
+  const el = $("#d-stats");
+  if (el) el.innerHTML = meters(s);
+}
+
+const ANSI = /\x1b\[[0-9;]*[A-Za-z]/g, LOG_RE = /^(\d{4}-\d\d-\d\dT[\d:.]+Z) ?/;
+let logCount = 0;
+function resetLogs() {
+  const el = $("#d-logs");
+  if (el) { el.innerHTML = ""; logCount = 0; }
+}
+function appendLogs(lines) {
+  const el = $("#d-logs");
   if (!el) return;
+  const html = lines.map(l => {
+    l = l.replace(ANSI, "");
+    const m = l.match(LOG_RE);
+    const body = m ? l.slice(m[0].length) : l;
+    const cls = /\b(error|fatal|panic|exception|fail(ed|ure)?)\b/i.test(body) ? "e" : /\bwarn(ing)?\b/i.test(body) ? "w" : "";
+    return `<div${cls ? ` class="${cls}"` : ""}>${m ? `<span class="ts">${esc(new Date(m[1]).toLocaleString())}  </span>` : ""}${esc(body) || " "}</div>`;
+  }).join("");
+  el.insertAdjacentHTML("beforeend", html);
+  logCount += lines.length;
+  const cap = Math.max(1000, +$("#d-tail").value);
+  while (logCount > cap && el.firstElementChild) { el.firstElementChild.remove(); logCount--; }
+  if ($("#d-follow").checked) el.scrollTop = el.scrollHeight;
+}
+function endLogs() {
+  const el = $("#d-logs");
+  if (!el) return;
+  const c = S.containers.find(x => x.Id === S.open);
+  const msg = !logCount ? "No log output." : c?.State === "running" ? "Log stream ended." : "Container stopped. Logs resume when it starts again.";
+  el.insertAdjacentHTML("beforeend", `<div class="note">${msg}</div>`);
+  if ($("#d-follow").checked) el.scrollTop = el.scrollHeight;
+}
+
+/* ---------- learn: shell in the binary, content fetched from GitHub ---------- */
+const Lr = { index: null, slug: null, blobs: new Map() };
+const docsBase = () => S.cfg?.docs || "";
+
+async function renderLearn(slug) {
+  if (!S.cfg) await refresh(false);
+  const view = $("#view");
+  if (!Lr.index) {
+    view.innerHTML = `<div class="list"><div class="empty">Loading lessons…</div></div>`;
+    try {
+      const r = await fetch(docsBase() + "index.json", { cache: "no-cache" });
+      if (!r.ok) throw new Error(r.status + " " + r.statusText);
+      Lr.index = await r.json();
+    } catch (e) {
+      if (S.tab !== "learn") return;
+      view.innerHTML = `<div class="doc" style="--h:250"><div class="kicker">Learn</div><h1>Lessons live on GitHub</h1>
+        <p>To keep contraire tiny, the Learn pages aren't stored in the program. Your browser loads them from <code>${esc(docsBase())}</code>, but that didn't work this time (${esc(e.message)}).</p>
+        <p>This usually means this device is offline, or the docs address was changed with <code>--docs-url</code>.</p></div>`;
+      return;
+    }
+  }
+  if (S.tab !== "learn") return;
+  const ch = Lr.index.chapters;
+  slug = slug || Lr.slug || ch[0].slug;
+  if (!view.querySelector(".learn")) {
+    view.innerHTML = `<div class="learn"><nav class="lnav" aria-label="Lessons">${ch.map((c, i) => `
+      <a href="#learn/${esc(c.slug)}" data-learn="${esc(c.slug)}" style="--h:${c.hue ?? hue(c.slug)}"><span class="num">${i + 1}</span><span>${esc(c.title)}<small>${esc(c.minutes)} min · ${esc(c.summary)}</small></span></a>`).join("")}
+      <div class="src">Lessons load live from <a href="${esc(Lr.index.source || docsBase())}" target="_blank" rel="noopener">GitHub</a>; nothing is stored on this machine.</div></nav>
+      <article class="doc" id="doc" aria-live="polite"></article></div>`;
+  }
+  openLesson(slug);
+}
+
+async function openLesson(slug) {
+  const ch = Lr.index.chapters, i = Math.max(0, ch.findIndex(c => c.slug === slug)), c = ch[i];
+  Lr.slug = c.slug;
+  history.replaceState(null, "", "#learn/" + c.slug);
+  document.querySelectorAll(".lnav a").forEach(a => a.classList.toggle("on", a.dataset.learn === c.slug));
+  const doc = $("#doc");
+  doc.style.setProperty("--h", c.hue ?? hue(c.slug));
   try {
-    const txt = await api(`/api/containers/${id}/logs?tail=${$("#d-tail").value}`);
-    if (S.open !== id) return;
-    if (!force && el.dataset.raw === txt) return;
-    el.dataset.raw = txt;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-    const showTs = $("#d-ts").checked;
-    const lines = txt.replace(/\x1b\[[0-9;]*[A-Za-z]/g, "").split("\n");
-    if (lines[lines.length - 1] === "") lines.pop();
-    el.innerHTML = lines.length ? lines.map(l => {
-      const m = l.match(LOG_RE);
-      const body = m ? l.slice(m[0].length) : l;
-      const cls = /\b(error|fatal|panic|exception|fail(ed)?)\b/i.test(body) ? "e" : /\bwarn(ing)?\b/i.test(body) ? "w" : "";
-      const ts = m && showTs ? `<span class="ts">${esc(new Date(m[1]).toLocaleString())}  </span>` : "";
-      return ts + (cls ? `<span class="${cls}">${esc(body)}</span>` : esc(body));
-    }).join("\n") : '<span class="ts">No log output.</span>';
-    if (force || atBottom) el.scrollTop = el.scrollHeight;
-  } catch (e) { el.textContent = e.message; }
+    const r = await fetch(docsBase() + c.file, { cache: "no-cache" });
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    const src = await r.text();
+    if (Lr.slug !== c.slug) return;
+    const prev = ch[i - 1], next = ch[i + 1];
+    doc.innerHTML = `<div class="kicker">Lesson ${i + 1} of ${ch.length}</div>` + md(src) +
+      `<nav class="next">${prev ? `<a href="#learn/${esc(prev.slug)}" data-learn="${esc(prev.slug)}"><small>Previous</small>← ${esc(prev.title)}</a>` : "<span></span>"}
+       ${next ? `<a href="#learn/${esc(next.slug)}" data-learn="${esc(next.slug)}" style="text-align:right"><small>Next</small>${esc(next.title)} →</a>` : ""}</nav>`;
+    doc.style.animation = "none"; void doc.offsetWidth; doc.style.animation = "";
+    doc.querySelectorAll("img[data-src]").forEach(loadImage);
+    window.scrollTo({ top: 0 });
+  } catch (e) { doc.innerHTML = `<p class="sub">Couldn't load this lesson: ${esc(e.message)}</p>`; }
+}
+
+/* Images go through fetch + blob so SVGs render whatever content type the host serves. */
+async function loadImage(img) {
+  const url = img.dataset.src;
+  try {
+    if (!Lr.blobs.has(url)) {
+      const r = await fetch(url);
+      if (!r.ok) throw 0;
+      const ext = url.split(".").pop().toLowerCase();
+      const type = { svg: "image/svg+xml", png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" }[ext] || "";
+      Lr.blobs.set(url, URL.createObjectURL(new Blob([await r.blob()], { type })));
+    }
+    img.src = Lr.blobs.get(url);
+  } catch { img.replaceWith(Object.assign(document.createElement("span"), { className: "sub", textContent: `[image: ${img.alt}]` })); }
+}
+
+/* Small Markdown subset: headings, paragraphs, lists, fenced code, quotes (callouts),
+   tables, images, links, bold/italic/code. Everything is escaped before formatting. */
+function md(src) {
+  const url = u => {
+    u = u.replace(/&amp;/g, "&");
+    if (/^https?:\/\//.test(u)) return u;
+    if (/^[a-z]+:/i.test(u) || u.startsWith("//")) return "#";
+    return docsBase() + u.replace(/^\.\//, "");
+  };
+  const inline = t => t.split(/(`[^`]+`)/).map((part, i) => {
+    if (i % 2) return `<code>${esc(part.slice(1, -1))}</code>`;
+    return esc(part)
+      .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (_, a, u) => `<img alt="${a}" data-src="${esc(url(u))}">`)
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, t, u) => {
+        const lesson = u.match(/^([\w-]+)\.md$/);
+        return lesson ? `<a href="#learn/${lesson[1]}" data-learn="${lesson[1]}">${t}</a>` : `<a href="${esc(url(u))}" target="_blank" rel="noopener">${t}</a>`;
+      })
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s).,:;!?]|$)/g, "$1<em>$2</em>");
+  }).join("");
+  const lines = src.replace(/\r/g, "").split("\n"), out = [];
+  for (let i = 0; i < lines.length;) {
+    const l = lines[i];
+    let m;
+    if ((m = l.match(/^```\s*([\w+-]*)/))) {
+      const code = [];
+      for (i++; i < lines.length && !/^```/.test(lines[i]); i++) code.push(lines[i]);
+      i++;
+      out.push(`<div class="code">${m[1] ? `<span class="lang">${esc(m[1])}</span>` : ""}<pre><code>${esc(code.join("\n"))}</code></pre><button class="copy" data-copycode>Copy</button></div>`);
+    } else if ((m = l.match(/^(#{1,3})\s+(.*)/))) {
+      const n = m[1].length;
+      out.push(`<h${n} id="${esc(m[2].toLowerCase().replace(/[^\w]+/g, "-"))}">${inline(m[2])}</h${n}>`); i++;
+    } else if (/^>\s?/.test(l)) {
+      const q = [];
+      for (; i < lines.length && /^>\s?/.test(lines[i]); i++) q.push(lines[i].replace(/^>\s?/, ""));
+      out.push(`<aside>${inline(q.join(" "))}</aside>`);
+    } else if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      const ordered = /^\s*\d+\./.test(l), items = [];
+      for (; i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i]); i++) items.push(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, ""));
+      out.push(`<${ordered ? "ol" : "ul"}>${items.map(t => `<li>${inline(t)}</li>`).join("")}</${ordered ? "ol" : "ul"}>`);
+    } else if (/^\|/.test(l) && /^\|[\s:|-]+\|$/.test(lines[i + 1] || "")) {
+      const cells = r => r.replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+      const head = cells(l), body = [];
+      for (i += 2; i < lines.length && /^\|/.test(lines[i]); i++) body.push(cells(lines[i]));
+      out.push(`<table><thead><tr>${head.map(h => `<th>${inline(h)}</th>`).join("")}</tr></thead><tbody>${body.map(r => `<tr>${r.map(c => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+    } else if ((m = l.match(/^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/))) {
+      out.push(`<figure>${inline(l)}${m[1] ? `<figcaption>${esc(m[1])}</figcaption>` : ""}</figure>`); i++;
+    } else if (!l.trim()) {
+      i++;
+    } else {
+      const p = [];
+      for (; i < lines.length && lines[i].trim() && !/^(```|#{1,3}\s|>|\s*([-*]|\d+\.)\s|\||!\[)/.test(lines[i]); i++) p.push(lines[i]);
+      if (!p.length) { p.push(l); i++; }
+      out.push(`<p>${inline(p.join(" "))}</p>`);
+    }
+  }
+  return out.join("\n");
 }
 
 /* ---------- events ---------- */
+function setTab(tab) {
+  S.tab = tab;
+  document.querySelectorAll(".tabs button").forEach(x => { x.classList.toggle("on", x.dataset.tab === tab); x.setAttribute("aria-selected", x.dataset.tab === tab); });
+  $("#tb-containers").hidden = tab !== "containers";
+  $("#tb-images").hidden = tab !== "images";
+  $("#searchbox").hidden = tab === "learn";
+  if (tab === "learn") renderLearn();
+  else { if (!S.open) history.replaceState(null, "", location.pathname); render(); }
+}
+
 document.addEventListener("click", async e => {
+  const cp = e.target.closest("[data-copy], [data-copycode]");
+  if (cp) {
+    e.stopPropagation();
+    const text = cp.dataset.copy ?? cp.parentElement.querySelector("code").textContent;
+    const ok = await copyText(text);
+    if (cp.dataset.copycode !== undefined) { cp.textContent = ok ? "Copied" : "Press Ctrl+C"; cp.classList.toggle("done", ok); setTimeout(() => { cp.textContent = "Copy"; cp.classList.remove("done"); }, 1600); }
+    else toast(ok ? "Copied to clipboard" : "Couldn't copy", !ok);
+    return;
+  }
+  const lesson = e.target.closest("[data-learn]");
+  if (lesson) { e.preventDefault(); return openLesson(lesson.dataset.learn); }
+  const pa = e.target.closest("[data-pact]");
+  if (pa) { e.stopPropagation(); return projectAct(pa.dataset.proj, pa.dataset.pact); }
   const a = e.target.closest("[data-act]");
   if (a) { e.stopPropagation(); return act(a.dataset.id, a.dataset.act); }
   const rm = e.target.closest("[data-rmi]");
@@ -626,31 +948,25 @@ document.addEventListener("click", async e => {
   const row = e.target.closest("[data-open]");
   if (row) openDrawer(row.dataset.open);
 });
-document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
-  S.tab = b.dataset.tab;
-  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
-  $("#tb-containers").hidden = S.tab !== "containers";
-  $("#tb-images").style.display = S.tab === "images" ? "inline-flex" : "none";
-  render();
-});
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => setTab(b.dataset.tab));
 $("#q").oninput = render;
 $("#showall").onchange = render;
 $("#scrim").onclick = closeDrawer;
 $("#d-close").onclick = closeDrawer;
 document.addEventListener("keydown", e => {
   if (!$("#modal").hidden) return;
-  if (e.key === "Escape") { if (S.open) closeDrawer(); else { $("#q").value = ""; render(); } }
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#q").focus(); }
+  if (e.key === "Escape") { if (S.open) closeDrawer(); else if (S.tab !== "learn") { $("#q").value = ""; render(); } }
+  if (e.key === "/" && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); $("#q").focus(); }
+  if (e.key === "Enter" && document.activeElement?.dataset?.open) openDrawer(document.activeElement.dataset.open);
 });
 $("#pull").onclick = async () => {
   const ref = await ask({ title: "Pull image", text: "Image reference, e.g. nginx:alpine or ghcr.io/owner/app:1.2", ok: "Pull",
-    extra: '<input type="text" placeholder="repository[:tag]" style="margin-bottom:16px" spellcheck="false">' });
+    extra: '<input type="text" placeholder="repository[:tag]" style="margin-bottom:16px" spellcheck="false" aria-label="Image reference">' });
   if (!ref || !ref.trim()) return;
   const btn = $("#pull"); btn.disabled = true; btn.textContent = "Pulling…";
   try { await api("/api/images/pull", { method: "POST", body: JSON.stringify({ image: ref.trim() }) }); toast(`Pulled ${ref.trim()}`); }
   catch (e) { toast(e.message, true); }
   btn.disabled = false; btn.textContent = "Pull image";
-  refresh();
 };
 $("#prune").onclick = async () => {
   if (!await ask({ title: "Prune dangling images?", text: "Removes untagged images not used by any container.", ok: "Prune", danger: true })) return;
@@ -658,12 +974,20 @@ $("#prune").onclick = async () => {
     const r = await api("/api/images/prune", { method: "POST" });
     toast(`Reclaimed ${fmtBytes(r.SpaceReclaimed || 0)}`);
   } catch (e) { toast(e.message, true); }
-  refresh();
 };
 
-refresh().then(() => { const m = location.hash.match(/^#c\/([\w.-]+)$/); if (m) openDrawer(m[1]); });
-setInterval(() => { if (!document.hidden) refresh(); }, 4000);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+/* Boot: hash routes are #c/<id> (container drawer) and #learn[/<lesson>]. */
+(async () => {
+  const h = location.hash;
+  await refresh();
+  connect();
+  const c = h.match(/^#c\/([\w.-]+)$/), l = h.match(/^#learn(?:\/([\w-]+))?$/);
+  if (l) { Lr.slug = l[1] || null; setTab("learn"); }
+  if (c) openDrawer(c[1]);
+})();
+/* Pushed events cover every change; this slow poll only refreshes texts like "Up 5 minutes". */
+setInterval(() => { if (!document.hidden) refresh(false); }, 15000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(false); });
 </script>
 </body>
 </html>

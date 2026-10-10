@@ -6,7 +6,8 @@ use std::ffi::OsString;
 
 pub struct Config {
     pub listen: String,
-    pub socket: String,
+    pub docker: String,
+    pub docs_url: String,
     pub user: String,
     pub password: Option<String>,
     pub max_connections: usize,
@@ -27,6 +28,8 @@ struct Opt {
     help: &'static str,
 }
 
+pub const DOCS_URL: &str = "https://raw.githubusercontent.com/he2s/contraire/main/docs/learn/";
+
 const OPTS: &[Opt] = &[
     Opt {
         short: Some('l'),
@@ -37,12 +40,12 @@ const OPTS: &[Opt] = &[
         help: "Address to listen on (HOST:PORT, or just PORT for all interfaces)",
     },
     Opt {
-        short: Some('s'),
-        long: "socket",
-        value: Some("PATH"),
+        short: Some('H'),
+        long: "docker-host",
+        value: Some("URL"),
         env: Some("DOCKER_HOST"),
-        default: Some("/var/run/docker.sock"),
-        help: "Docker daemon socket (a unix:// prefix is accepted)",
+        default: Some(crate::docker::DEFAULT_HOST),
+        help: "Docker daemon: unix:///path, tcp://host:port or npipe:////./pipe/name",
     },
     Opt {
         short: Some('u'),
@@ -62,6 +65,14 @@ const OPTS: &[Opt] = &[
     },
     Opt {
         short: None,
+        long: "docs-url",
+        value: Some("URL"),
+        env: Some("CONTRAIRE_DOCS_URL"),
+        default: Some(DOCS_URL),
+        help: "Where the Learn tab loads its content from (fetched by the browser)",
+    },
+    Opt {
+        short: None,
         long: "max-connections",
         value: Some("N"),
         env: Some("CONTRAIRE_MAX_CONNECTIONS"),
@@ -74,7 +85,8 @@ const OPTS: &[Opt] = &[
 
 fn help() -> String {
     let mut s = format!(
-        "{} {}\n{}\n\nUsage: {} [OPTIONS]\n\nOptions:\n",
+        "{} ({} {})\n{}\n\nUsage: {} [OPTIONS]\n\nOptions:\n",
+        crate::DISPLAY_NAME,
         env!("CARGO_PKG_NAME"),
         env!("CARGO_PKG_VERSION"),
         env!("CARGO_PKG_DESCRIPTION"),
@@ -176,7 +188,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>, env: impl Fn(&str) -> Opt
                     return Ok(Cli::Done);
                 }
                 ("version", _) => {
-                    println!("{} {}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+                    println!("{} {} ({})", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), crate::DISPLAY_NAME);
                     return Ok(Cli::Done);
                 }
                 (_, Some(meta)) => {
@@ -212,12 +224,13 @@ pub fn parse(args: impl IntoIterator<Item = OsString>, env: impl Fn(&str) -> Opt
         return Err(format!("invalid listen address '{listen}': expected HOST:PORT or PORT"));
     }
 
-    let socket = get("socket").unwrap_or_default();
-    let socket = match socket.split_once("://") {
-        None => socket,
-        Some(("unix", path)) => path.to_string(),
-        Some(_) => return Err(format!("unsupported docker socket '{socket}': only unix sockets are supported")),
-    };
+    let mut docs_url = get("docs-url").unwrap_or_default();
+    if !(docs_url.starts_with("https://") || docs_url.starts_with("http://")) {
+        return Err(format!("invalid docs url '{docs_url}': expected http(s)://…"));
+    }
+    if !docs_url.ends_with('/') {
+        docs_url.push('/');
+    }
 
     let max_connections = get("max-connections")
         .unwrap_or_default()
@@ -233,7 +246,8 @@ pub fn parse(args: impl IntoIterator<Item = OsString>, env: impl Fn(&str) -> Opt
 
     Ok(Cli::Run(Config {
         listen,
-        socket,
+        docker: get("docker-host").unwrap_or_default(),
+        docs_url,
         user: get("user").unwrap_or_default(),
         password,
         max_connections,
@@ -241,10 +255,13 @@ pub fn parse(args: impl IntoIterator<Item = OsString>, env: impl Fn(&str) -> Opt
 }
 
 fn read_password(path: &str) -> Result<String, String> {
-    use std::os::unix::fs::PermissionsExt;
-    let meta = std::fs::metadata(path).map_err(|e| format!("cannot read password file '{path}': {e}"))?;
-    if meta.permissions().mode() & 0o004 != 0 {
-        eprintln!("contraire: warning: password file '{path}' is world-readable (chmod 600 it)");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let meta = std::fs::metadata(path).map_err(|e| format!("cannot read password file '{path}': {e}"))?;
+        if meta.permissions().mode() & 0o004 != 0 {
+            eprintln!("contraire: warning: password file '{path}' is world-readable (chmod 600 it)");
+        }
     }
     let pw = std::fs::read_to_string(path).map_err(|e| format!("cannot read password file '{path}': {e}"))?;
     let pw = pw.trim_end_matches(['\n', '\r']);
@@ -271,7 +288,8 @@ mod tests {
     fn defaults() {
         let c = run(&[], &[]).unwrap();
         assert_eq!(c.listen, "0.0.0.0:8083");
-        assert_eq!(c.socket, "/var/run/docker.sock");
+        assert_eq!(c.docker, crate::docker::DEFAULT_HOST);
+        assert_eq!(c.docs_url, DOCS_URL);
         assert_eq!(c.user, "admin");
         assert!(c.password.is_none());
         assert_eq!(c.max_connections, 64);
@@ -292,7 +310,7 @@ mod tests {
         let env = [("CONTRAIRE_LISTEN", "7000"), ("DOCKER_HOST", "unix:///run/d.sock")];
         let c = run(&[], &env).unwrap();
         assert_eq!(c.listen, "0.0.0.0:7000");
-        assert_eq!(c.socket, "/run/d.sock");
+        assert_eq!(c.docker, "unix:///run/d.sock");
         assert_eq!(run(&["-l", "8000"], &env).unwrap().listen, "0.0.0.0:8000");
         assert_eq!(run(&[], &[("CONTRAIRE_PASSWORD", "pw")]).unwrap().password.as_deref(), Some("pw"));
     }
@@ -304,7 +322,8 @@ mod tests {
         assert!(run(&["-x"], &[]).err().unwrap().contains("unknown option '-x'"));
         assert!(run(&["stray"], &[]).err().unwrap().contains("unexpected argument"));
         assert!(run(&["-l", "localhost"], &[]).err().unwrap().contains("HOST:PORT"));
-        assert!(run(&["-s", "tcp://1.2.3.4:2375"], &[]).err().unwrap().contains("only unix"));
+        assert!(run(&["--docs-url", "file:///x"], &[]).err().unwrap().contains("docs url"));
+        assert_eq!(run(&["--docs-url", "http://l:1/d"], &[]).unwrap().docs_url, "http://l:1/d/");
         assert!(run(&["--max-connections", "0"], &[]).is_err());
         assert!(run(&["-p", "/nonexistent/pw"], &[]).err().unwrap().contains("cannot read"));
     }

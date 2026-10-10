@@ -34,16 +34,27 @@ impl Request {
     }
 }
 
+/// Writes a long-lived response body (e.g. Server-Sent Events) directly to the socket.
+pub type StreamFn = Box<dyn FnOnce(&mut TcpStream) -> io::Result<()> + Send>;
+
 pub struct Response {
     pub status: u16,
     pub content_type: &'static str,
     pub body: Vec<u8>,
     pub headers: Vec<(&'static str, String)>,
+    stream: Option<StreamFn>,
 }
 
 impl Response {
     pub fn new(status: u16, content_type: &'static str, body: impl Into<Vec<u8>>) -> Self {
-        Response { status, content_type, body: body.into(), headers: Vec::new() }
+        Response { status, content_type, body: body.into(), headers: Vec::new(), stream: None }
+    }
+
+    /// A Server-Sent Events response; the connection closes when `f` returns.
+    pub fn sse(f: impl FnOnce(&mut TcpStream) -> io::Result<()> + Send + 'static) -> Self {
+        let mut r = Self::new(200, "text/event-stream", Vec::new()).with_header("Cache-Control", "no-store");
+        r.stream = Some(Box::new(f));
+        r
     }
 
     pub fn json(status: u16, body: impl Into<Vec<u8>>) -> Self {
@@ -140,14 +151,18 @@ fn read_request(r: &mut impl BufRead) -> io::Result<Option<Request>> {
     Ok(Some(req))
 }
 
-fn write_response(w: &mut impl Write, res: &Response, head_only: bool, keep_alive: bool) -> io::Result<()> {
+fn write_response(w: &mut TcpStream, res: Response, head_only: bool, keep_alive: bool) -> io::Result<()> {
+    let keep_alive = keep_alive && res.stream.is_none();
+    let length = match res.stream {
+        Some(_) => String::new(),
+        None => format!("Content-Length: {}\r\n", res.body.len()),
+    };
     let mut out = format!(
-        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: {}\r\n\
+        "HTTP/1.1 {} {}\r\nContent-Type: {}\r\n{length}Connection: {}\r\n\
          X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nX-Frame-Options: DENY\r\n",
         res.status,
         reason(res.status),
         res.content_type,
-        res.body.len(),
         if keep_alive { "keep-alive" } else { "close" },
     );
     for (k, v) in &res.headers {
@@ -158,10 +173,16 @@ fn write_response(w: &mut impl Write, res: &Response, head_only: bool, keep_aliv
     }
     out.push_str("\r\n");
     w.write_all(out.as_bytes())?;
-    if !head_only {
-        w.write_all(&res.body)?;
+    if head_only {
+        return w.flush();
     }
-    w.flush()
+    match res.stream {
+        Some(f) => f(w),
+        None => {
+            w.write_all(&res.body)?;
+            w.flush()
+        }
+    }
 }
 
 pub fn serve(stream: TcpStream, handler: impl Fn(&Request) -> Response) {
@@ -176,7 +197,7 @@ pub fn serve(stream: TcpStream, handler: impl Fn(&Request) -> Response) {
             Ok(Some(req)) => req,
             Ok(None) => return,
             Err(e) if e.kind() == io::ErrorKind::InvalidData => {
-                let _ = write_response(&mut writer, &Response::error(400, &e.to_string()), false, false);
+                let _ = write_response(&mut writer, Response::error(400, &e.to_string()), false, false);
                 return;
             }
             Err(_) => return,
@@ -185,7 +206,8 @@ pub fn serve(stream: TcpStream, handler: impl Fn(&Request) -> Response) {
             .header("connection")
             .is_some_and(|v| v.eq_ignore_ascii_case("close"));
         let res = handler(&req);
-        if write_response(&mut writer, &res, req.method == "HEAD", keep_alive).is_err() || !keep_alive {
+        let keep_alive = keep_alive && res.stream.is_none();
+        if write_response(&mut writer, res, req.method == "HEAD", keep_alive).is_err() || !keep_alive {
             return;
         }
     }
