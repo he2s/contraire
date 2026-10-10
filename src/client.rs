@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use crate::docker::{Docker, Tick};
 
 pub const COMMANDS: &[&str] =
-    &["init", "ps", "top", "patterns", "incidents", "incident", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
+    &["init", "ps", "top", "patterns", "incidents", "incident", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "services", "service", "export", "mcp"];
 
 const HELP: &str = "\
 Client mode: control a contraire server from this machine.
@@ -39,6 +39,9 @@ Commands:
   events [--since MIN]       Docker events of the last MIN minutes (default 60)
   activity [-n N]            The server's audit log (admin token)
   info                       Host and server facts
+  services                   Apps reporting over OpenTelemetry: requests/min, errors, p50/p95/p99
+  service <name>             One service: operations, failed and slowest requests, log patterns
+  export metrics|telemetry [--csv]   Dump the in-memory history as JSON lines (or CSV) to stdout
   mcp                        Run an MCP server on stdio for Claude Code and other agents
 
 Options:
@@ -46,6 +49,7 @@ Options:
   --token <TOKEN> API token from the Access page      [env: CONTRAIRE_TOKEN]
   --json          Print the raw JSON instead of a table
   --new           (patterns) only patterns that first appeared after the container started
+  --csv           (export) CSV instead of JSON lines
   --skill-from <PATH>   (init) copy the skill from a local file instead of GitHub
 
 Sessions: inside a folder made by `contraire init`, host and token come from .contraire/,
@@ -393,6 +397,94 @@ fn patterns_text(name: &str, p: &Value, limit: usize) -> String {
     out
 }
 
+/// Milliseconds, short: 0.42ms, 12ms, 3.1s.
+fn ms(v: &Value) -> String {
+    match v.as_f64() {
+        None => "-".into(),
+        Some(x) if x < 0.01 => "<0.01ms".into(),
+        Some(x) if x < 1.0 => format!("{x:.2}ms"),
+        Some(x) if x < 1000.0 => format!("{x:.0}ms"),
+        Some(x) => format!("{:.1}s", x / 1000.0),
+    }
+}
+
+fn rate(errors: &Value, total: &Value) -> String {
+    match (errors.as_f64(), total.as_f64()) {
+        (Some(e), Some(t)) if t > 0.0 => format!("{:.1}%", e / t * 100.0),
+        _ => "-".into(),
+    }
+}
+
+fn services_text(v: &Value) -> String {
+    let mut sv = v["services"].as_array().cloned().unwrap_or_default();
+    if sv.is_empty() {
+        return "No app has reported over OpenTelemetry yet. Point OTEL_EXPORTER_OTLP_ENDPOINT at this server \
+                (OTLP/HTTP, compression none); see the Telemetry page for snippets.\n"
+            .into();
+    }
+    // Most failing requests first, then busiest.
+    let key = |x: &Value| x["errors_1h"].as_f64().unwrap_or(0.0) * 1e6 + x["rpm"].as_f64().unwrap_or(0.0);
+    sv.sort_by(|a, b| key(b).total_cmp(&key(a)));
+    let mut rows = vec![vec!["SERVICE".into(), "REQ/MIN".into(), "ERRORS".into(), "P50".into(), "P95".into(), "P99".into(), "LOGS".into(), "LAST".into()]];
+    for x in &sv {
+        rows.push(vec![
+            s(x, "/service").into(),
+            format!("{:.1}", x["rpm"].as_f64().unwrap_or(0.0)),
+            rate(&x["errors_1h"], &x["requests_1h"]),
+            ms(&x["p50"]),
+            ms(&x["p95"]),
+            ms(&x["p99"]),
+            x["logs"].to_string(),
+            ago(x["last"].as_u64().unwrap_or(0)),
+        ]);
+    }
+    let mut out = format!("{} services · {} batches received · last hour\n", sv.len(), v["received_batches"]);
+    out.push_str(&table(&rows));
+    out
+}
+
+fn service_text(x: &Value) -> String {
+    let mut out = format!(
+        "{}: {:.1} req/min · {} of {} requests failed ({}) · p50 {} p95 {} p99 {} · last report {}\n",
+        s(x, "/service"),
+        x["rpm"].as_f64().unwrap_or(0.0),
+        x["errors_1h"],
+        x["requests_1h"],
+        rate(&x["errors_1h"], &x["requests_1h"]),
+        ms(&x["p50"]),
+        ms(&x["p95"]),
+        ms(&x["p99"]),
+        ago(x["last"].as_u64().unwrap_or(0))
+    );
+    let ops = x["operations"].as_array().cloned().unwrap_or_default();
+    if !ops.is_empty() {
+        out.push_str("\nOperations (last hour)\n");
+        let mut rows = vec![vec!["COUNT".into(), "ERRORS".into(), "P50".into(), "P95".into(), "P99".into(), "OPERATION".into()]];
+        for o in ops.iter().take(15) {
+            rows.push(vec![o["count_1h"].to_string(), rate(&o["errors_1h"], &o["count_1h"]), ms(&o["p50"]), ms(&o["p95"]), ms(&o["p99"]), s(o, "/operation").into()]);
+        }
+        out.push_str(&table(&rows));
+    }
+    for (title, key) in [("Failed requests", "errors"), ("Slowest requests", "slowest")] {
+        let ex = x[key].as_array().cloned().unwrap_or_default();
+        if ex.is_empty() {
+            continue;
+        }
+        out.push_str(&format!("\n{title}\n"));
+        let mut rows = vec![vec!["TOOK".into(), "WHEN".into(), "TRACE".into(), "OPERATION · DETAIL".into()]];
+        for e in ex.iter().take(8) {
+            let detail = [s(e, "/message"), s(e, "/detail")].into_iter().filter(|t| !t.is_empty()).collect::<Vec<_>>().join(" · ");
+            rows.push(vec![ms(&e["ms"]), ago(e["at"].as_u64().unwrap_or(0)), s(e, "/trace_id").into(), format!("{} {detail}", s(e, "/operation"))]);
+        }
+        out.push_str(&table(&rows));
+    }
+    if x["log_patterns"]["patterns"].as_array().is_some_and(|p| !p.is_empty()) {
+        out.push('\n');
+        out.push_str(&patterns_text(&format!("{} (OTLP logs)", s(x, "/service")), &x["log_patterns"], 15));
+    }
+    out
+}
+
 fn incidents_text(v: &Value) -> String {
     let is = v["incidents"].as_array().cloned().unwrap_or_default();
     if v["enabled"] == false {
@@ -555,6 +647,7 @@ struct Args {
     follow: bool,
     timestamps: bool,
     new: bool,
+    csv: bool,
     n: Option<u32>,
     since: Option<u64>,
     pos: Vec<String>,
@@ -569,6 +662,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         follow: false,
         timestamps: false,
         new: false,
+        csv: false,
         n: None,
         since: None,
         pos: Vec::new(),
@@ -588,6 +682,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "-f" | "--follow" => a.follow = true,
             "-t" | "--timestamps" => a.timestamps = true,
             "--new" => a.new = true,
+            "--csv" => a.csv = true,
             "-n" | "--tail" => a.n = Some(val("-n")?.parse().map_err(|_| "-n needs a number")?),
             "--since" => a.since = Some(val("--since")?.parse().map_err(|_| "--since needs minutes")?),
             "-h" | "--help" => a.pos.insert(0, "help".into()),
@@ -857,6 +952,21 @@ fn cli(r: &Remote, cmd: &str, a: &Args) -> Result<String, String> {
             let t = r.get_text(&format!("/api/events?since={}", a.since.unwrap_or(60) * 60))?;
             if a.json { Ok(t) } else { Ok(events_text(&t)) }
         }
+        "services" => {
+            let v = r.get("/api/telemetry")?;
+            if a.json { raw(v) } else { Ok(services_text(&v)) }
+        }
+        "service" => {
+            let v = r.get(&format!("/api/telemetry/{}", enc(&arg(1, "service name (see 'contraire services')")?)))?;
+            if a.json { raw(v) } else { Ok(service_text(&v)) }
+        }
+        "export" => {
+            let what = arg(1, "source: metrics or telemetry")?;
+            if what != "metrics" && what != "telemetry" {
+                return Err(format!("export what? 'metrics' or 'telemetry', not '{what}'"));
+            }
+            r.get_text(&format!("/api/{what}/export{}", if a.csv { "?format=csv" } else { "" }))
+        }
         "activity" => {
             let v = r.get(&format!("/api/audit?limit={}", a.n.unwrap_or(30)))?;
             if a.json { raw(v) } else { Ok(activity_text(&v)) }
@@ -914,7 +1024,7 @@ const PROTOCOL: &str = "2025-06-18";
 /// The MCP tool catalogue as plain JSON data: parsed on request instead of expanding
 /// `json!` into ~24 KB of code. Annotations: read-only tools never change anything;
 /// start/stop/restart/stack_action do, and are marked destructive where downtime results.
-const TOOLS: &str = r#"[{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"All containers on the Docker host with plain-language status (running, unhealthy, failed (code), paused, exited), uptime, compose stack, published ports and image.","inputSchema":{"properties":{},"type":"object"},"name":"list_containers","title":"List containers"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"State, health check streak, exit code with an explanation, restarts, image, command, ports, networks, mounts, memory limit and compose stack/service/dependencies.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"inspect_container","title":"Inspect a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The last lines of a container's logs (stdout and stderr). Use 'grep' to keep only matching lines.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"grep":{"description":"Case-insensitive substring filter","type":"string"},"tail":{"description":"Number of lines, default 100, max 2000","type":"integer"}},"required":["container"],"type":"object"},"name":"container_logs","title":"Container logs"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU %, memory (and limit), network bytes and process count of a running container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"container_stats","title":"Container resource usage"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU (% of one core), memory, network and disk rates per container, busiest first, plus host CPU, load and memory. Sampled from cgroups every 10 s.","inputSchema":{"properties":{},"type":"object"},"name":"top_containers","title":"Resource use per container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Now / peak / average CPU, memory, network and disk over the last hour (10 s samples) or 24 hours (1 min averages), plus the memory trend. Use it to spot leaks, spikes before a crash, or a noisy neighbour.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"range":{"description":"Default 1h","enum":["1h","24h"],"type":"string"}},"required":["container"],"type":"object"},"name":"container_metrics","title":"Container resource history"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The container's log since it started, grouped into patterns with counts (variable parts shown as <*>), errors first, with first/last seen and whether the pattern is NEW since start. Far cheaper than reading raw logs; read raw lines afterwards only for the patterns that matter.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"only_new":{"description":"Only patterns that first appeared after startup (what changed)","type":"boolean"}},"required":["container"],"type":"object"},"name":"log_patterns","title":"Log patterns of a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Crashes caught by the flight recorder (non-zero exit or OOM): without an id, the list; with an id, the postmortem with exit reason, last log lines, error and new patterns and CPU/memory in the 15 minutes before the end.","inputSchema":{"properties":{"id":{"description":"Incident id from the list","type":"string"}},"type":"object"},"name":"incidents","title":"Crash postmortems"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker Compose projects on the host: how many services are up and which need attention.","inputSchema":{"properties":{},"type":"object"},"name":"list_stacks","title":"List compose stacks"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Container starts, stops (with exit codes), restarts, OOM kills, health changes and image pulls in the last N minutes.","inputSchema":{"properties":{"minutes":{"description":"Window in minutes, default 60, max 1440","type":"integer"}},"type":"object"},"name":"recent_events","title":"Recent Docker events"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Who changed what through the dashboard, when, and whether it worked. Needs an admin token.","inputSchema":{"properties":{"limit":{"description":"Entries, default 30","type":"integer"}},"type":"object"},"name":"activity","title":"Audit log"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker host name, version, OS, CPUs, memory, container and image counts, and the dashboard's own footprint.","inputSchema":{"properties":{},"type":"object"},"name":"host_info","title":"Host info"},{"annotations":{"destructiveHint":false,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Start a stopped container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"start_container","title":"Start a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Restart a container. Brief downtime for that service.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"restart_container","title":"Restart a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Stop a running container. Its service is down until started again.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"stop_container","title":"Stop a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Act on every container of a compose stack in dependency order (dependencies start first, stop last).","inputSchema":{"properties":{"action":{"enum":["start","stop","restart"],"type":"string"},"stack":{"description":"Compose project name","type":"string"}},"required":["stack","action"],"type":"object"},"name":"stack_action","title":"Start, stop or restart a compose stack"}]"#;
+const TOOLS: &str = r#"[{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"All containers on the Docker host with plain-language status (running, unhealthy, failed (code), paused, exited), uptime, compose stack, published ports and image.","inputSchema":{"properties":{},"type":"object"},"name":"list_containers","title":"List containers"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"State, health check streak, exit code with an explanation, restarts, image, command, ports, networks, mounts, memory limit and compose stack/service/dependencies.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"inspect_container","title":"Inspect a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The last lines of a container's logs (stdout and stderr). Use 'grep' to keep only matching lines.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"grep":{"description":"Case-insensitive substring filter","type":"string"},"tail":{"description":"Number of lines, default 100, max 2000","type":"integer"}},"required":["container"],"type":"object"},"name":"container_logs","title":"Container logs"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU %, memory (and limit), network bytes and process count of a running container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"container_stats","title":"Container resource usage"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU (% of one core), memory, network and disk rates per container, busiest first, plus host CPU, load and memory. Sampled from cgroups every 10 s.","inputSchema":{"properties":{},"type":"object"},"name":"top_containers","title":"Resource use per container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Now / peak / average CPU, memory, network and disk over the last hour (10 s samples) or 24 hours (1 min averages), plus the memory trend. Use it to spot leaks, spikes before a crash, or a noisy neighbour.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"range":{"description":"Default 1h","enum":["1h","24h"],"type":"string"}},"required":["container"],"type":"object"},"name":"container_metrics","title":"Container resource history"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The container's log since it started, grouped into patterns with counts (variable parts shown as <*>), errors first, with first/last seen and whether the pattern is NEW since start. Far cheaper than reading raw logs; read raw lines afterwards only for the patterns that matter.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"only_new":{"description":"Only patterns that first appeared after startup (what changed)","type":"boolean"}},"required":["container"],"type":"object"},"name":"log_patterns","title":"Log patterns of a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Crashes caught by the flight recorder (non-zero exit or OOM): without an id, the list; with an id, the postmortem with exit reason, last log lines, error and new patterns and CPU/memory in the 15 minutes before the end.","inputSchema":{"properties":{"id":{"description":"Incident id from the list","type":"string"}},"type":"object"},"name":"incidents","title":"Crash postmortems"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"What the apps themselves report over OpenTelemetry, last hour. Without 'service': every service with requests/min, error rate and p50/p95/p99 latency, most failing first. With 'service': its operations, latest failed and slowest requests (with trace IDs and HTTP/RPC attributes) and its OTLP log patterns. Use it when a container looks healthy but users see errors or slowness.","inputSchema":{"properties":{"service":{"description":"service.name as reported, from the list","type":"string"}},"type":"object"},"name":"service_health","title":"Service health from traces"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker Compose projects on the host: how many services are up and which need attention.","inputSchema":{"properties":{},"type":"object"},"name":"list_stacks","title":"List compose stacks"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Container starts, stops (with exit codes), restarts, OOM kills, health changes and image pulls in the last N minutes.","inputSchema":{"properties":{"minutes":{"description":"Window in minutes, default 60, max 1440","type":"integer"}},"type":"object"},"name":"recent_events","title":"Recent Docker events"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Who changed what through the dashboard, when, and whether it worked. Needs an admin token.","inputSchema":{"properties":{"limit":{"description":"Entries, default 30","type":"integer"}},"type":"object"},"name":"activity","title":"Audit log"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker host name, version, OS, CPUs, memory, container and image counts, and the dashboard's own footprint.","inputSchema":{"properties":{},"type":"object"},"name":"host_info","title":"Host info"},{"annotations":{"destructiveHint":false,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Start a stopped container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"start_container","title":"Start a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Restart a container. Brief downtime for that service.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"restart_container","title":"Restart a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Stop a running container. Its service is down until started again.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"stop_container","title":"Stop a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Act on every container of a compose stack in dependency order (dependencies start first, stop last).","inputSchema":{"properties":{"action":{"enum":["start","stop","restart"],"type":"string"},"stack":{"description":"Compose project name","type":"string"}},"required":["stack","action"],"type":"object"},"name":"stack_action","title":"Start, stop or restart a compose stack"}]"#;
 
 fn tools() -> Value {
     serde_json::from_str(TOOLS).unwrap_or_default()
@@ -955,6 +1065,10 @@ fn call_tool(r: &Remote, name: &str, args: &Value) -> Result<String, String> {
         }
         "recent_events" => r.get_text(&format!("/api/events?since={}", int_arg("minutes", 60, 1440) * 60)).map(|t| events_text(&t)),
         "activity" => r.get(&format!("/api/audit?limit={}", int_arg("limit", 30, 500))).map(|v| activity_text(&v)),
+        "service_health" => match args.get("service").and_then(Value::as_str) {
+            Some(n) => r.get(&format!("/api/telemetry/{}", enc(n))).map(|v| service_text(&v)),
+            None => r.get("/api/telemetry").map(|v| services_text(&v)),
+        },
         "host_info" => Ok(info_text(&r.get("/api/info")?, &r.get("/api/self")?)),
         "start_container" | "stop_container" | "restart_container" => {
             let verb = name.trim_end_matches("_container");

@@ -11,6 +11,7 @@
 - **Metrics:** CPU, memory, network and disk for every container and the host, read straight from cgroups every 10 s, with 24 h of history. `/metrics` serves Prometheus format for an existing Grafana.
 - **Log patterns:** every container's log, grouped live into patterns with counts (`GET /api/items/<*>` ×48,212), with errors and newly appearing patterns flagged.
 - **Incidents:** a flight recorder writes a postmortem when a container crashes or runs out of memory: exit reason, last log lines, error patterns, and CPU and memory just before. Crash loops count once.
+- **Telemetry:** your own apps can report over OpenTelemetry (OTLP/HTTP, protobuf or JSON). Traces become requests per minute, error rate and p50/p95/p99 latency per service and operation, with the latest failed and slowest requests and their trace IDs. OTLP logs become patterns. One hour in fixed-size rings in memory, nothing on disk; `--otlp-forward` passes every batch on to another collector.
 - **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
 
 ## Install
@@ -71,6 +72,8 @@ contraire logs web -f             # follow live
 contraire restart web
 contraire stacks                  # compose stacks and what needs attention
 contraire events --since 30       # starts, stops with exit codes, OOM kills, health changes
+contraire services                # apps reporting over OpenTelemetry: requests, errors, latency
+contraire export telemetry --csv  # the last hour per service and minute, for a spreadsheet or DuckDB
 contraire ps --help               # everything else (add --json for raw output)
 ```
 
@@ -80,7 +83,7 @@ contraire ps --help               # everything else (add --json for raw output)
 claude mcp add contraire --env CONTRAIRE_TOKEN=ctr_... -- contraire mcp --host http://pi.local:8083
 ```
 
-Claude then gets 12 tools: `list_containers`, `inspect_container`, `container_logs` (with grep), `container_stats`, `list_stacks`, `recent_events`, `activity`, `host_info`, `start_container`, `restart_container`, `stop_container` and `stack_action`. Each change it makes appears in **Activity** under the token's name. The binary has no TLS, so for a Pi outside your LAN use an SSH tunnel (`ssh -L 8083:localhost:8083 pi`) or a VPN.
+Claude then gets 17 tools: `list_containers`, `inspect_container`, `container_logs` (with grep), `container_stats`, `top_containers`, `container_metrics`, `log_patterns`, `incidents`, `service_health`, `list_stacks`, `recent_events`, `activity`, `host_info`, `start_container`, `restart_container`, `stop_container` and `stack_action`. Each change it makes appears in **Activity** under the token's name. The binary has no TLS, so for a Pi outside your LAN use an SSH tunnel (`ssh -L 8083:localhost:8083 pi`) or a VPN.
 
 ## Options
 
@@ -92,6 +95,7 @@ Claude then gets 12 tools: `list_containers`, `inspect_container`, `container_lo
 | `-p, --password-file` | `CONTRAIRE_PASSWORD_FILE` | none (or `CONTRAIRE_PASSWORD`) |
 | `--docs-url` | `CONTRAIRE_DOCS_URL` | this repository's `docs/learn/` |
 | `--audit-file` | `CONTRAIRE_AUDIT_FILE` | `auto`: `$STATE_DIRECTORY`, else `~/.local/state/contraire/audit.jsonl`; `off` disables it |
+| `--otlp-forward` | `CONTRAIRE_OTLP_FORWARD` | none; e.g. `http://collector:4318` |
 | `--max-connections` | `CONTRAIRE_MAX_CONNECTIONS` | `64` |
 
 ## Build

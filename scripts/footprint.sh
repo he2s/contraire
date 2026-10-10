@@ -24,7 +24,7 @@ for a in "$@"; do
 done
 
 # Budgets (KB, %, count). Keep in sync with ROADMAP.md.
-B_BINARY=1280 B_PAGE=120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384 B_THREADS_AFTER=1
+B_BINARY=1280 B_PAGE=120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384
 
 BIN=target/release/contraire
 cargo build --release --quiet
@@ -94,6 +94,9 @@ fi
 info "RSS after load" "$(status VmRSS)" KB
 
 echo "Streams ($STREAMS live streams)"
+# Background threads (log followers, sampler, OTLP aggregator) stay; stream relays must not leak.
+THREADS_IDLE=$(status Threads)
+info "threads before streams" "$THREADS_IDLE" ""
 for _ in $(seq "$STREAMS"); do curl -sN $URL/api/stream >/dev/null & STREAM_PIDS+=($!); done
 sleep 1
 info "threads with $((STREAMS + 1)) streams" "$(status Threads)" ""
@@ -102,7 +105,7 @@ kill "${STREAM_PIDS[@]}" 2>/dev/null || true
 STREAM_PIDS=()
 if [ $QUICK = 0 ]; then
   sleep 17 # relay threads notice closed clients within one 15 s idle tick
-  row "threads after streams closed" "$(status Threads)" $B_THREADS_AFTER ""
+  row "threads after streams closed" "$(status Threads)" $((THREADS_IDLE + 1)) ""
 fi
 row "peak RSS (VmHWM)" "$(status VmHWM)" $B_PEAK_RSS KB
 

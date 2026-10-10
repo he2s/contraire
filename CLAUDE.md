@@ -22,7 +22,7 @@ When there is a choice, take the one that does this:
 
 These principles also apply to the planned extensions:
 - Prometheus `/metrics`
-- an OTLP endpoint
+- an OTLP endpoint (done: `otlp.rs`)
 - log collection
 - node metrics from `/proc` and `/sys/fs/cgroup`
 - storage to files or a columnar store (Parquet, or polars if its weight is acceptable)
@@ -124,6 +124,13 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - The last 32 KB of output sits in a fixed ring buffer. On a non-zero exit or OOM kill (but not 0, 143, or 137 shortly after a `kill` event) a postmortem goes to `<state>/incidents/`. Crash loops update one file; at most 100 files are kept.
   - Snapshots are published through `Mutex<Arc<_>>` cells, swapped every 5 s: the second deliberate lock.
   - Memory grows with followed containers; `footprint.sh` budgets 4 MB + 256 KB per container.
+- **`src/otlp.rs`:** OTLP/HTTP receiver on `POST /v1/traces|logs|metrics`, protobuf (hand-written reader, no codegen) or JSON. gzip gets 415, gRPC isn't served.
+  - The HTTP thread decodes spans into small fixed records and hands a batch to one aggregator thread through a bounded `sync_channel`; a full queue answers 503 so the sender retries. Only the aggregator touches the per-service state, so there are no locks there.
+  - Only server and consumer spans (or root spans) count as requests. Per service: 60 one-minute buckets with a 28-bucket log2-µs histogram (percentiles interpolate inside a bucket); per operation, 12 five-minute buckets. Exemplars keep the latest errors and the slowest requests with trace IDs.
+  - Up to 64 services and 32 operations each; names are looked up before insert, so a known service costs no allocation (4 allocs per 1,000-span batch, ~240 MB/s).
+  - OTLP logs go to `logwatch` as per-service pattern miners. Metrics points are only counted.
+  - `--otlp-forward` re-posts each raw batch from a separate thread; drops are counted, never block the receiver.
+  - Routes: `/api/telemetry`, `/api/telemetry/<service>`, `/api/telemetry/export` (and `/api/metrics/export`): JSON lines, or CSV with `?format=csv`.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/client.rs`:** client mode. When the first argument is a command (`ps`, `logs`, `mcp`, …), `main` hands off here and the server code never runs.
   - It talks to a server's HTTP API, reusing `docker.rs`'s HTTP client over `tcp://` with extra headers (`Bearer` token, `X-Contraire`).

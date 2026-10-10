@@ -61,8 +61,9 @@ The status column already sorts problems for you: `unhealthy`, `failed (<code>)`
    ```
    Use `-t` when timing matters, e.g. to line errors up with a restart from `events`. For a container in a restart loop, the cause is usually in the first lines after each start, not the last ones.
 4. For resource problems (slow, OOM, exit 137), `contraire top` shows who is busy right now. The MCP tool `container_metrics` gives now, peak and average over 1 h or 24 h, plus the memory trend; a steady climb before an OOM points to a leak.
-5. `contraire events --since 60` shows whether it's a loop (repeated start/stop with the same exit code), an OOM kill, or a single crash.
-6. Report (format below). Suggest the fix; don't apply it unless asked.
+5. If the container looks fine but users still see errors or slowness, ask the apps themselves: `contraire services` (MCP: `service_health`) lists every service reporting over OpenTelemetry with requests/min, error rate and p50/p95/p99, most failing first. `contraire service <name>` shows which operations fail, the latest failed requests with their error message and trace ID, and the slowest ones. A service whose failures all point at one dependency ("name resolver error", "connection refused") usually means that dependency is down: go back to step 1 for it. Empty output only means no app sends OTLP here, not that all is well.
+6. `contraire events --since 60` shows whether it's a loop (repeated start/stop with the same exit code), an OOM kill, or a single crash.
+7. Report (format below). Suggest the fix; don't apply it unless asked.
 
 ## Workflow: change something
 
@@ -109,6 +110,8 @@ Quote at most a few log lines; the decisive one beats a wall of output. Say when
 | `contraire inspect <c>` | Details, exit-code hint, depends_on | read |
 | `contraire logs <c> [-n N] [-t] [-f]` | Logs (stdout+stderr) | read |
 | `contraire events [--since MIN]` | Docker events | read |
+| `contraire services` / `service <name>` | OpenTelemetry: requests, errors, latency per service | read |
+| `contraire export metrics\|telemetry [--csv]` | Last hour(s) as JSON lines or CSV | read |
 | `contraire start\|stop\|restart\|pause\|unpause <c>` | One container | operate |
 | `contraire stack <name> start\|stop\|restart` | Whole stack, dependency order | operate |
 | `contraire activity [-n N]` | Audit log | admin |

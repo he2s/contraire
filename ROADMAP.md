@@ -64,7 +64,7 @@ These are listed in `CLAUDE.md` and follow its principles: streaming, bounded me
 
 - **Server-side cache of `/containers/json`, shared by all tabs.** Measured: Docker needs ~100 ms to list 30 containers, while the server alone answers ~12k req/s. Every open tab currently triggers its own Docker call on each event. Swap snapshots atomically, without locks.
 - Prometheus `/metrics` endpoint
-- OTLP endpoint
+- **Done:** OTLP/HTTP endpoint (traces → RED metrics per service and operation, exemplars; logs → patterns; `--otlp-forward`), JSONL/CSV export
 - log collection
 - node metrics from `/proc` and `/sys/fs/cgroup`
   - reading cgroup files directly is far cheaper than Docker's stats API

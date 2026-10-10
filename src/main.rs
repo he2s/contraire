@@ -9,6 +9,7 @@ mod http;
 mod live;
 mod logwatch;
 mod metrics;
+mod otlp;
 mod tokens;
 
 use std::collections::HashMap;
@@ -39,6 +40,7 @@ struct App {
     tokens: tokens::Store,
     metrics: Arc<metrics::Store>,
     logs: Arc<logwatch::Watch>,
+    otlp: Arc<otlp::Otlp>,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
@@ -80,6 +82,7 @@ fn main() {
     let state_dir = audit.path().and_then(|p| p.parent()).map(Path::to_path_buf);
     let token_store = tokens::Store::open(state_dir.as_ref().map(|d| d.join("tokens.json")));
     let metrics_store = metrics::start("/sys/fs/cgroup");
+    let watch = logwatch::Watch::start(docker.clone(), metrics_store.clone(), state_dir);
     let app = Arc::new(App {
         docker: docker.clone(),
         auth,
@@ -87,7 +90,8 @@ fn main() {
         audit,
         user: cfg.password.is_some().then(|| cfg.user.clone()),
         tokens: token_store,
-        logs: logwatch::Watch::start(docker.clone(), metrics_store.clone(), state_dir),
+        otlp: otlp::Otlp::start(watch.clone(), cfg.otlp_forward.clone()),
+        logs: watch,
         metrics: metrics_store,
         listen: cfg.listen.clone(),
         started: std::time::Instant::now(),
@@ -175,11 +179,56 @@ fn required_scope(req: &Request) -> tokens::Scope {
     let segs: Vec<&str> = req.path.trim_matches('/').split('/').collect();
     match (req.method.as_str(), segs.as_slice()) {
         (_, ["api", "tokens", ..]) | (_, ["api", "audit"]) => Admin,
+        ("POST", ["v1", "traces" | "logs" | "metrics"]) => Read,
         ("GET" | "HEAD", _) => Read,
         ("POST", ["api", "containers", _, "start" | "stop" | "restart" | "pause" | "unpause"]) => Operate,
         ("POST", ["api", "projects", _, _]) => Operate,
         _ => Admin,
     }
+}
+
+/// `%20` and friends in one path segment (service names may contain spaces or slashes).
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%'
+            && let Some(v) = s.get(i + 1..i + 3).and_then(|h| u8::from_str_radix(h, 16).ok())
+        {
+            out.push(v);
+            i += 3;
+            continue;
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Rows as JSON lines (default) or CSV with a header from the first row's keys.
+fn export(req: &Request, rows: Vec<Value>) -> Response {
+    if req.param("format") == Some("csv") {
+        let cols: Vec<String> = rows.first().and_then(Value::as_object).map(|o| o.keys().cloned().collect()).unwrap_or_default();
+        let mut out = cols.join(",") + "\n";
+        for r in &rows {
+            let cells: Vec<String> = cols
+                .iter()
+                .map(|c| match &r[c] {
+                    Value::String(s) => format!("\"{}\"", s.replace('"', "\"\"")),
+                    Value::Null => String::new(),
+                    v => v.to_string(),
+                })
+                .collect();
+            out += &(cells.join(",") + "\n");
+        }
+        return Response::new(200, "text/csv; charset=utf-8", out);
+    }
+    let mut out = String::new();
+    for r in rows {
+        out += &(r.to_string() + "\n");
+    }
+    Response::new(200, "application/x-ndjson", out)
 }
 
 /// What a mutating request does, for the audit log: (`kind.verb`, target).
@@ -248,7 +297,10 @@ impl App {
         };
         // CSRF guard for browser sessions: a custom header can't be sent cross-origin without
         // a CORS preflight, which we never answer. Bearer tokens are never sent implicitly.
-        if bearer.is_none() && !matches!(req.method.as_str(), "GET" | "HEAD") && req.header("x-contraire").is_none() {
+        // OTLP exports are exempt: their content types (protobuf, JSON) need a preflight too.
+        let otlp = req.path.starts_with("/v1/")
+            && req.header("content-type").is_some_and(|t| t.starts_with("application/x-protobuf") || t.starts_with("application/json"));
+        if bearer.is_none() && !otlp && !matches!(req.method.as_str(), "GET" | "HEAD") && req.header("x-contraire").is_none() {
             return Response::error(403, "missing X-Contraire header");
         }
         let need = required_scope(req);
@@ -348,6 +400,22 @@ impl App {
                 Ok(false) => Response::error(404, "no such token"),
                 Err(e) => Response::error(500, &e),
             },
+            ("POST", ["v1", signal @ ("traces" | "logs" | "metrics")]) => {
+                let (status, ctype, body) = self.otlp.ingest(
+                    signal,
+                    req.header("content-type").unwrap_or(""),
+                    req.header("content-encoding"),
+                    &req.body,
+                );
+                Response::new(status, ctype, body)
+            }
+            ("GET", ["api", "telemetry"]) => Response::json(200, self.otlp.overview().to_string()).with_header("Cache-Control", "no-store"),
+            ("GET", ["api", "telemetry", "export"]) => export(req, self.otlp.export()),
+            ("GET", ["api", "telemetry", name]) => match self.otlp.service(&percent_decode(name)) {
+                Some(v) => Response::json(200, v.to_string()).with_header("Cache-Control", "no-store"),
+                None => Response::error(404, "no telemetry from this service yet"),
+            },
+            ("GET", ["api", "metrics", "export"]) => export(req, self.metrics_rows()),
             ("GET", ["api", "logs", "patterns"]) => Response::json(200, self.logs.overview().to_string()),
             ("GET", ["api", "logs", "patterns", id]) if valid_id(id) => match self.logs.patterns(id) {
                 Some(s) => Response::json(200, s.to_json(req.param("new") == Some("1")).to_string()).with_header("Cache-Control", "no-store"),
@@ -439,6 +507,7 @@ impl App {
             "auth": self.auth.is_some(),
             "audit": self.audit.path().map(|p| p.display().to_string()),
             "tokens": self.tokens.path().map(|_| self.tokens.len()),
+            "otlp": { "batches": self.otlp.received.load(Ordering::Relaxed), "rejected": self.otlp.rejected.load(Ordering::Relaxed), "forward": self.otlp.forward_to() },
             "logs": { "following": self.logs.following(), "incidents": self.logs.incidents_dir().map(|p| p.display().to_string()) },
             "metrics": {
                 "available": self.metrics.available(),
@@ -476,6 +545,36 @@ impl App {
             }
             Err(e) => Response::error(409, &e),
         }
+    }
+
+    /// 24 h of 1-minute container metrics as rows, for `contraire export metrics`.
+    fn metrics_rows(&self) -> Vec<Value> {
+        let names: HashMap<u64, String> = self
+            .docker
+            .get("/containers/json?all=1")
+            .ok()
+            .and_then(|r| serde_json::from_slice::<Vec<Value>>(&r.body).ok())
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|c| Some((metrics::key_of(c["Id"].as_str()?)?, c["Names"][0].as_str()?.trim_start_matches('/').to_string())))
+            .collect();
+        let now = unix_now() / 60 * 60;
+        let mut rows = Vec::new();
+        for (key, ..) in self.metrics.latest(unix_now(), 0) {
+            let Some(name) = names.get(&key) else { continue };
+            let Some(series) = self.metrics.container(&format!("{key:016x}"), true, metrics::COARSE) else { continue };
+            let n = series[0].len() as u64;
+            for i in 0..n as usize {
+                let mut row = serde_json::Map::new();
+                row.insert("container".into(), json!(name));
+                row.insert("minute".into(), json!(now - (n - 1 - i as u64) * 60));
+                for (f, s) in metrics::FIELDS.iter().zip(&series) {
+                    row.insert((*f).into(), json!(s[i]));
+                }
+                rows.push(Value::Object(row));
+            }
+        }
+        rows
     }
 
     fn metrics_overview(&self, req: &Request) -> Response {

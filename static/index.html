@@ -391,6 +391,17 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .pat .ex code { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
 @media (max-width: 700px) { .pat summary { grid-template-columns: 70px minmax(0, 1fr); } .pat .lvl, .pat .when { display: none; } .pat .ex { padding-left: 12px; } }
 .inc-tr { grid-template-columns: minmax(180px, 1.2fr) 190px minmax(0, 2.4fr) 110px; min-width: 760px; }
+.tel-tr { grid-template-columns: minmax(170px, 1.4fr) 110px 120px 210px minmax(140px, 1fr) 90px; min-width: 900px; }
+.op-tr { grid-template-columns: minmax(0, 2.4fr) 90px 100px 210px; min-width: 640px; }
+.ex-tr { grid-template-columns: 90px minmax(0, 1.4fr) minmax(0, 2fr) 120px 80px; min-width: 760px; }
+.lat { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; }
+.lat b { font-weight: 700; }
+.lat .slow { color: var(--accent-ink); }
+.mini { display: block; height: 26px; width: 100%; }
+.mini .b { fill: var(--ink-soft, var(--muted)); }
+.mini .b.hot { fill: var(--accent); }
+.setup ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 14px; }
+.setup li > p { margin: 0 0 6px; }
 
 /* cheat sheet */
 .sheet { columns: 3 400px; column-gap: 24px; }
@@ -517,6 +528,7 @@ h1 .help { width: 22px; height: 22px; font-size: 13px; position: relative; top: 
       <a href="#stacks" data-nav="stacks" data-hint="Docker Compose projects: start, stop or restart a whole stack in dependency order"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
       <a href="#images" data-nav="images" data-hint="Images on disk: what uses them, how big they are, pull and clean up"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
       <a href="#incidents" data-nav="incidents" data-hint="Crashes caught by the flight recorder, with a postmortem each"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><span>Incidents</span><span class="count" id="n-inc">–</span></a>
+      <a href="#telemetry" data-nav="telemetry" data-hint="Requests, errors and slow calls your own apps report over OpenTelemetry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Telemetry</span><span class="count" id="n-tel">–</span></a>
       <a href="#activity" data-nav="activity" data-hint="Who changed what through this dashboard, and whether it worked"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
       <a href="#learn" data-nav="learn" data-hint="Short illustrated lessons on containers, Linux and Compose, loaded from GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
       <a href="#cheatsheet" data-nav="cheatsheet" data-hint="Every CLI command and the Claude Code / MCP setup on one page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
@@ -668,6 +680,16 @@ const HELP = {
   "stacks": ["Stacks", "Docker Compose projects, recognised from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
   "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
   "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
+  "telemetry": ["Telemetry", "Your own apps can report how they're doing over OpenTelemetry (OTLP/HTTP): traces become requests per minute, error rate and latency per service, logs become patterns. Kept in memory for an hour in fixed-size rings (about 2 KB per service), never on disk. Optionally forwarded on to another collector with <code>--otlp-forward</code>."],
+  "service": ["Service", "The <code>service.name</code> an app reports itself as. Click a row for its operations, failed and slowest requests, and log patterns."],
+  "requests/min": ["Requests/min", "Incoming requests (server and consumer spans) per minute, averaged over the last 5 minutes. Calls a service makes to others count for those others."],
+  "errors": ["Errors", "The share of requests in the last hour whose span status is <i>error</i>. Red from 5%."],
+  "latency": ["Latency", "Median · 95th · 99th percentile in the last hour. Half of requests are faster than the median; 1 in 20 is slower than the 95th. Estimated from a 28-bucket histogram, within about 20%."],
+  "last hour": ["Last hour", "Requests per minute for the last 60 minutes, oldest on the left. Red bars are spikes."],
+  "operations": ["Operations", "Requests grouped by span name (e.g. <code>GET /api/cart</code>), busiest first, over the last hour."],
+  "failed requests": ["Failed requests", "The latest spans with error status, with their HTTP/RPC attributes. Copy the trace ID to see the whole request in Jaeger or Tempo."],
+  "slowest requests": ["Slowest requests", "The slowest requests of the last hour. The trace ID finds the full trace in your tracing tool."],
+  "send telemetry here": ["Send telemetry here", "OTLP/HTTP with protobuf or JSON on <code>/v1/traces</code>, <code>/v1/logs</code> and <code>/v1/metrics</code>. gRPC and gzip aren't supported, to stay small; Collectors can always send plain HTTP."],
   "activity": ["Activity", "An append-only audit log of every change made through this dashboard, by a person (browser) or a token (script, AI agent), including refused attempts. Bounded to about 2 MB on disk. Changes made with plain <code>docker</code> on the host appear as events, not here."],
   "access": ["Access", "API tokens let scripts and AI agents use this dashboard without your password. Only a SHA-256 fingerprint is stored; the token is shown once. Scopes: <code>read</code> looks, <code>operate</code> also starts/stops/restarts, <code>admin</code> also removes, prunes and manages tokens."],
   "cheat sheet": ["Cheat sheet", "Every command of the <code>contraire</code> CLI and the Claude Code / MCP setup on one page. Loaded live from GitHub, so it adds nothing to the program; examples use this server's address."],
@@ -1060,12 +1082,12 @@ function viewIncidents() {
       <code class="mono" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((i.headline || "").slice(0, 200))}</code>
       <span class="muted">${ago(i.last)}</span></div>`).join("")}</div></div>` : "");
 }
+const pats = (arr, empty) => arr?.length ? `<div class="pats">${arr.map(x => `<details class="pat lv-${x.level || "none"}"><summary><span class="cnt"><b>${x.count}</b></span><span class="lvl">${esc(x.level || "·")}</span><code>${patternHtml(x.pattern)}</code><span class="when">${x.new ? '<span class="pill s-bad" style="height:18px;font-size:10.5px">NEW</span>' : ""}</span></summary><div class="ex"><code>${esc(x.example)}</code></div></details>`).join("")}</div>` : `<p class="muted">${empty}</p>`;
 function incidentDetail(i) {
   const crumbs = `<nav class="crumbs"><a href="#incidents">Incidents</a>${icon("chev", 14)}<span style="color:var(--text);font-weight:600">${esc(S.arg)}</span></nav>`;
   if (!i) return crumbs + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
   const c = i.container, live = S.containers.find(x => x.Id === c.id);
   const lines = (i.last_lines || []).map(l => { const lv = LV.find(([re]) => re.test(l)); return `<div class="ln${lv ? " " + lv[1] : ""}"><span class="lv">${lv ? lv[2] : ""}</span><span class="msg">${esc(l)}</span></div>`; }).join("");
-  const pats = (arr, empty) => arr?.length ? `<div class="pats">${arr.map(x => `<details class="pat lv-${x.level || "none"}"><summary><span class="cnt"><b>${x.count}</b></span><span class="lvl">${esc(x.level || "·")}</span><code>${patternHtml(x.pattern)}</code><span class="when">${x.new ? '<span class="pill s-bad" style="height:18px;font-size:10.5px">NEW</span>' : ""}</span></summary><div class="ex"><code>${esc(x.example)}</code></div></details>`).join("")}</div>` : `<p class="muted">${empty}</p>`;
   return crumbs + `<header class="ph chead"><div style="min-width:0"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px"><h1>${esc(c.name)}</h1><span class="pill s-bad" style="height:30px;font-size:13px">${i.oom_killed ? "out of memory" : "exit " + i.exit_code}</span>${i.repeats > 1 ? `<span class="pill">crashed ${i.repeats}× in a row</span>` : ""}</div>
       <div class="meta"><span>${imageHtml(c.image || "")}</span><span>${esc(c.stack || "")}${c.service ? " / " + esc(c.service) : ""}</span><span>${new Date(i.last * 1000).toLocaleString()}</span></div></div>
       ${live ? `<a class="btn" href="#c/${esc(live.Id)}">Open container${icon("chev", 16)}</a>` : ""}</header>
@@ -1080,6 +1102,87 @@ function incidentDetail(i) {
       <div class="card"><h2 style="margin-bottom:10px">New since it started</h2>${pats(i.new_patterns, "Nothing that wasn't there at startup.")}</div>
     </section>
     <div class="console"><div class="bar2"><b style="padding:0 6px">Last ${i.last_lines?.length || 0} log lines</b></div><div class="loglines" style="height:auto;max-height:60vh">${lines || '<div class="note">No output was captured.</div>'}</div></div>`;
+}
+
+/* ---------- telemetry: what apps report over OpenTelemetry (OTLP/HTTP) ---------- */
+const ms = v => v == null ? "–" : v < .01 ? "<0.01 ms" : v < 1 ? v.toFixed(2) + " ms" : v < 1000 ? v.toFixed(v < 10 ? 1 : 0) + " ms" : (v / 1000).toFixed(v < 10000 ? 2 : 1) + " s";
+const pctTxt = r => r == null ? "–" : r === 0 ? "0%" : r < .001 ? "<0.1%" : (r * 100).toFixed(r < .1 ? 1 : 0) + "%";
+const lat = x => `<span class="lat">${ms(x.p50)} · <b${x.p95 > 1000 ? ' class="slow"' : ""}>${ms(x.p95)}</b> · ${ms(x.p99)}</span>`;
+/* Tiny per-minute bar strip for table rows; the last bar and spikes are red, like the big charts. */
+function mini(v) {
+  const n = v.length, max = Math.max(...v) || 1, avg = v.reduce((a, b) => a + b, 0) / (n || 1), bw = 100 / n;
+  return `<svg class="mini" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">${v.map((y, i) => { const h = y ? Math.max(1.5, y / max * 26) : 0; return h ? `<rect class="b${y > avg * 1.8 ? " hot" : ""}" x="${(i * bw).toFixed(2)}" y="${(26 - h).toFixed(1)}" width="${(bw * .7).toFixed(2)}" height="${h.toFixed(1)}"/>` : ""; }).join("")}</svg>`;
+}
+async function loadTelemetry(name) {
+  try {
+    if (name) S.svc = await api(`/api/telemetry/${encodeURIComponent(name)}`).catch(e => ({ service: name, missing: e.message }));
+    else S.tel = await api("/api/telemetry");
+    if (!name) $("#n-tel").textContent = S.tel.services.length;
+    if (S.view === "telemetry") render();
+  } catch (e) { toast(e.message, true); }
+}
+function otlpSetup(open) {
+  const ep = `${location.protocol}//${location.host}`, auth = S.self?.auth;
+  const env = `OTEL_EXPORTER_OTLP_ENDPOINT=${ep}\nOTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf\nOTEL_EXPORTER_OTLP_COMPRESSION=none${auth ? "\nOTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20<read token>" : ""}\nOTEL_SERVICE_NAME=my-app`;
+  const col = `exporters:\n  otlphttp/contraire:\n    endpoint: ${ep}\n    compression: none${auth ? "\n    headers:\n      Authorization: Bearer <read token>" : ""}\n\nservice:\n  pipelines:\n    traces: { exporters: [otlphttp/contraire] }\n    logs:   { exporters: [otlphttp/contraire] }`;
+  const block = (lang, t) => `<div class="doc" style="max-width:none"><div class="code"><span class="lang">${lang}</span><pre><code>${esc(t)}</code></pre><button class="copy" data-copycode>Copy</button></div></div>`;
+  return `<details class="card setup"${open || S.setupOpen ? " open" : ""}><summary style="cursor:pointer"><h2 style="display:inline">Send telemetry here</h2></summary>
+    <p class="muted" style="margin-top:8px">Any app with an OpenTelemetry SDK, or an OpenTelemetry Collector, can report to this dashboard over <b>OTLP/HTTP</b> at <code>${esc(ep)}</code>. Traces become request rates, errors and latency per service; logs become patterns. Nothing is stored on disk.</p>
+    <ol><li><p><b>Straight from an app</b>: set these variables on the container (Compose: under <code>environment:</code>).</p>${block("sh", env)}</li>
+    <li><p><b>From a Collector</b>: add an exporter next to the ones you have. Gzip isn't supported, so keep <code>compression: none</code>.</p>${block("yaml", col)}</li>
+    ${auth ? `<li><p>This dashboard has a password, so senders need a token with <b>read</b> access. Make one under <a href="#access">Access</a>.</p></li>` : ""}</ol></details>`;
+}
+function viewTelemetry() {
+  const head = (sub, extra = "") => `<header class="ph"><div><div class="kick">${sub}</div><h1>Telemetry</h1></div>${extra}</header>`;
+  if (S.arg) return serviceDetail(S.svc && S.svc.service === S.arg ? S.svc : null);
+  const T = S.tel;
+  if (!T) return head("opentelemetry") + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  const sv = T.services;
+  const dl = `<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="/api/telemetry/export?format=csv" download="telemetry.csv">CSV</a><a class="btn" href="/api/telemetry/export" download="telemetry.jsonl">JSON lines</a></div>`;
+  if (!sv.length) return head("opentelemetry · waiting for data") + `<section class="card mood"><span class="badge ok" aria-hidden="true">~</span><div class="txt"><strong>No app has reported yet</strong>
+    <span class="muted">Your own applications can tell this dashboard how they're doing: how many requests they serve, how many fail and how long they take. Point them here and this page fills in by itself within a minute.</span></div></section>` + otlpSetup(true);
+  const rpm = sv.reduce((a, x) => a + x.rpm, 0), worst = sv.reduce((a, x) => x.requests_1h >= 20 && x.error_rate > (a?.error_rate ?? 0) ? x : a, null);
+  const bad = worst && worst.error_rate >= .05;
+  const intro = `<section class="card mood"><span class="badge${bad ? "" : " ok"}" aria-hidden="true">${bad ? "!" : "✓"}</span><div class="txt"><strong>${sv.length} service${sv.length === 1 ? "" : "s"} reporting · ${rpm.toFixed(rpm < 10 ? 1 : 0)} requests a minute</strong>
+    <span class="muted">${bad ? `<b>${esc(worst.service)}</b> fails ${pctTxt(worst.error_rate)} of its requests. Open it to see which calls fail and what it logs.` : "No service is failing more than 5% of its requests."} Latency shows the median · 95th · 99th percentile: the 95th is what 1 in 20 requests is slower than.</span></div></section>`;
+  const rows = [...sv].sort((a, b) => b.error_rate * b.requests_1h - a.error_rate * a.requests_1h || b.rpm - a.rpm).map(x => `<div class="tr tel-tr" data-href="#telemetry/${encodeURIComponent(x.service)}" tabindex="0">
+      <span><span class="stk" style="--h:${hue(x.service)}"><i></i>${esc(x.service)}</span><span class="muted" style="font-size:12px;display:block;margin-top:3px">${x.spans.toLocaleString()} spans${x.logs ? ` · ${x.logs.toLocaleString()} logs` : ""}</span></span>
+      <span class="mono">${x.rpm.toFixed(x.rpm < 10 ? 1 : 0)}</span>
+      <span>${x.requests_1h ? `<span class="pill ${x.error_rate >= .05 ? "s-bad" : x.error_rate > 0 ? "s-warn" : "s-ok"}">${pctTxt(x.error_rate)}</span>` : '<span class="muted">–</span>'}</span>
+      <span>${x.requests_1h ? lat(x) : '<span class="muted">–</span>'}</span>
+      <span>${mini(x.spark)}</span>
+      <span class="muted">${ago(x.last)}</span></div>`).join("");
+  return head(`opentelemetry · ${T.received_batches.toLocaleString()} batches received${T.rejected_batches ? ` · ${T.rejected_batches} rejected` : ""}${T.forward?.to ? ` · forwarding to ${esc(T.forward.to)}` : ""}`, dl) + intro +
+    `<div class="table"><div class="scroll"><div class="tr th tel-tr"><span>Service</span><span>Requests/min</span><span>Errors</span><span>Latency</span><span>Last hour</span><span>Last seen</span></div>${rows}</div></div>` + otlpSetup(false);
+}
+function serviceDetail(x) {
+  const crumbs = `<nav class="crumbs"><a href="#telemetry">Telemetry</a>${icon("chev", 14)}<span style="color:var(--text);font-weight:600">${esc(S.arg)}</span></nav>`;
+  if (!x) return crumbs + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  if (x.missing) return crumbs + `<div class="card"><span class="muted">Nothing from <b>${esc(S.arg)}</b> yet. Services appear once they send their first trace or log.</span></div>`;
+  const ex = (arr, empty) => arr?.length ? `<div class="table"><div class="scroll"><div class="tr th ex-tr"><span>Took</span><span>Operation</span><span>Detail</span><span>Trace</span><span>When</span></div>${arr.map(e => `<div class="tr ex-tr">
+      <span class="lat"><b${e.ms > 1000 ? ' class="slow"' : ""}>${ms(e.ms)}</b>${e.error ? '<span class="pill s-bad" style="height:18px;font-size:10.5px;margin-left:6px">error</span>' : ""}</span>
+      <code class="mono" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.operation)}">${esc(e.operation)}</code>
+      <span class="muted" style="font-size:12px;overflow-wrap:anywhere">${esc([e.message, e.detail].filter(Boolean).join(" · "))}</span>
+      <button class="stk mono" style="font-size:11.5px;cursor:pointer;border:0" data-copy="${esc(e.trace_id)}" title="Copy the trace ID, to look it up in Jaeger or Tempo">${esc(e.trace_id.slice(0, 12))}…</button>
+      <span class="muted">${ago(e.at)}</span></div>`).join("")}</div></div>` : `<div class="card"><span class="muted">${empty}</span></div>`;
+  const ops = x.operations?.length ? `<div class="table"><div class="scroll"><div class="tr th op-tr"><span>Operation</span><span>Last hour</span><span>Errors</span><span>Latency</span></div>${x.operations.slice(0, S.opsAll ? 999 : 10).map(o => `<div class="tr op-tr">
+      <code class="mono" style="font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.operation)}">${esc(o.operation)}</code>
+      <span class="mono">${o.count_1h.toLocaleString()}</span>
+      <span>${o.errors_1h ? `<span class="pill s-bad">${pctTxt(o.errors_1h / o.count_1h)}</span>` : '<span class="muted">none</span>'}</span>
+      <span>${lat(o)}</span></div>`).join("")}</div></div>${x.operations.length > 10 ? `<button class="btn" style="margin-top:10px" data-opsall>${S.opsAll ? "Show the busiest 10" : `Show all ${x.operations.length} operations`}</button>` : ""}` : `<div class="card"><span class="muted">No traced operations yet.</span></div>`;
+  const lp = x.log_patterns;
+  return crumbs + `<header class="ph chead"><div style="min-width:0"><div class="kick">service · last hour</div><h1>${esc(x.service)}</h1>
+      <div class="meta"><span>${x.spans.toLocaleString()} spans · ${x.logs.toLocaleString()} log lines${x.metric_points ? ` · ${x.metric_points.toLocaleString()} metric points` : ""}</span><span>last report ${ago(x.last)}</span></div></div></header>
+    <section class="grid">
+      <div class="card sum"><span class="k">Requests</span><strong>${x.rpm.toFixed(x.rpm < 10 ? 1 : 0)}<small style="font-size:14px"> /min</small></strong><small>${x.requests_1h.toLocaleString()} in the last hour</small></div>
+      <div class="card sum"><span class="k">Failing</span><strong style="${x.error_rate >= .05 ? "color:var(--accent-ink)" : ""}">${pctTxt(x.error_rate)}</strong><small>${x.errors_1h.toLocaleString()} errors in the last hour</small></div>
+      <div class="card sum"><span class="k">Typical / slow</span><strong>${ms(x.p50)}</strong><small>1 in 20 slower than ${ms(x.p95)} · 1 in 100 slower than ${ms(x.p99)}</small></div>
+      <figure class="card chart" style="margin:0;grid-column:1/-1"><figcaption><span>Requests per minute</span><span class="mono" style="font-size:12px">60 min</span></figcaption>${spark(x.spark, 50)}</figure>
+    </section>
+    <h2 style="margin:26px 0 10px">Operations</h2>${ops}
+    <h2 style="margin:26px 0 10px">Failed requests</h2>${ex(x.errors, "No failed requests recently.")}
+    <h2 style="margin:26px 0 10px">Slowest requests</h2>${ex(x.slowest, "Nothing recorded yet.")}
+    <h2 style="margin:26px 0 10px">Log patterns</h2>${lp?.patterns?.length ? `<p class="muted" style="margin:0 0 8px">${lp.lines.toLocaleString()} lines sent over OpenTelemetry, grouped into ${lp.patterns.length} patterns.</p>` + pats(lp.patterns, "") : `<div class="card"><span class="muted">This service sends no logs over OpenTelemetry.</span></div>`}`;
 }
 
 /* ---------- activity: the audit log ---------- */
@@ -1878,7 +1981,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet", "incidents"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet", "incidents", "telemetry"].includes(v) ? v : "containers";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
@@ -1893,6 +1996,7 @@ function route() {
   if (view === "activity" || view === "container") loadAudit();
   if (view === "access") loadTokens();
   if (view === "incidents") loadIncidents(arg);
+  if (view === "telemetry") loadTelemetry(arg);
   if (view !== "access") S.newToken = null;
   window.scrollTo({ top: 0 });
 }
@@ -1918,7 +2022,7 @@ function render(soft) {
     if (c) $("#c-head").innerHTML = containerHead(c);
     return;
   }
-  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, incidents: viewIncidents, container: viewContainer }[S.view]();
+  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, incidents: viewIncidents, telemetry: viewTelemetry, container: viewContainer }[S.view]();
   // Keep the search box's focus and caret across re-renders, so typing isn't interrupted.
   const q = document.activeElement?.id === "q" ? $("#q") : null;
   const pos = q?.selectionStart;
@@ -1953,6 +2057,7 @@ document.addEventListener("click", async e => {
   if (f) { S.filter = f.dataset.filter; return render(); }
   const pa = e.target.closest("[data-pact]");
   if (pa) return projectAct(pa.dataset.proj, pa.dataset.pact);
+  if (e.target.closest("[data-opsall]")) { S.opsAll = !S.opsAll; return render(); }
   const a = e.target.closest("[data-act]");
   if (a) { e.stopPropagation(); return act(a.dataset.id, a.dataset.act); }
   const rm = e.target.closest("[data-rmi]");
@@ -2068,6 +2173,11 @@ async function loadIncidentCount() {
 }
 loadIncidentCount();
 setInterval(() => { if (!document.hidden) loadIncidentCount(); }, 30000);
+/* Telemetry aggregates per minute; refresh the open page every 10 s, the sidebar count every 30 s. */
+setInterval(() => { if (!document.hidden && S.view === "telemetry" && !$("#view details.pat[open]") && !getSelection().toString()) loadTelemetry(S.arg); }, 10000);
+setInterval(() => { if (!document.hidden && S.view !== "telemetry") api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.services.length; }).catch(() => {}); }, 30000);
+api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.services.length; }).catch(() => {});
+document.addEventListener("toggle", e => { if (e.target.classList?.contains("setup")) S.setupOpen = e.target.open; }, true);
 async function loadMetrics() {
   try {
     [S.metrics, S.patternsAll] = await Promise.all([api("/api/metrics?spark=30"), api("/api/logs/patterns").catch(() => S.patternsAll)]);

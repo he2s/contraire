@@ -102,6 +102,8 @@ pub struct Watch {
     /// Container ID → time of the last `kill` event (`docker stop`/`restart`/`kill`), so a
     /// deliberate stop that ends in SIGKILL (137) isn't mistaken for a crash.
     killed: Mutex<HashMap<String, u64>>,
+    /// Log records received over OTLP, mined per service (not per container).
+    services: Mutex<HashMap<String, Miner>>,
 }
 
 /* ---------- masking and matching (the hot path: no allocation for known patterns) ---------- */
@@ -312,7 +314,7 @@ impl Ring {
 impl Watch {
     pub fn start(docker: Docker, metrics: Arc<metrics::Store>, state_dir: Option<PathBuf>) -> Arc<Watch> {
         let incidents = state_dir.map(|d| d.join("incidents")).filter(|d| fs::create_dir_all(d).is_ok());
-        let w = Arc::new(Watch { docker, metrics, incidents, followers: Mutex::new(HashMap::new()), killed: Mutex::new(HashMap::new()) });
+        let w = Arc::new(Watch { docker, metrics, incidents, followers: Mutex::new(HashMap::new()), killed: Mutex::new(HashMap::new()), services: Mutex::new(HashMap::new()) });
         let me = w.clone();
         let _ = std::thread::Builder::new().name("logwatch".into()).stack_size(128 * 1024).spawn(move || me.supervise());
         w
@@ -486,6 +488,27 @@ impl Watch {
                 }
             }
         }
+    }
+
+    /// One OTLP log record of `service`: mined like a container log line.
+    pub fn ingest(&self, service: &str, severity: &str, body: &str) {
+        let mut m = self.services.lock().unwrap_or_else(|e| e.into_inner());
+        if m.len() >= 64 && !m.contains_key(service) {
+            return;
+        }
+        let now = crate::unix_now();
+        let miner = m.entry(service.to_string()).or_insert_with(|| Miner::new(now));
+        for line in body.lines().take(20) {
+            if severity.is_empty() {
+                miner.add(line, now);
+            } else {
+                miner.add(&format!("{severity} {line}"), now);
+            }
+        }
+    }
+
+    pub fn service_patterns(&self, service: &str) -> Option<Snapshot> {
+        self.services.lock().unwrap_or_else(|e| e.into_inner()).get(service).map(|m| m.snap.clone())
     }
 
     /// Pattern snapshot of one container (by full ID or name).

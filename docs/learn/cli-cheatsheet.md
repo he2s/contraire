@@ -58,6 +58,24 @@ contraire incident <id>                                # postmortem: why it died
 contraire logs web -n 1000 | grep -i error             # only the lines that mention errors
 ```
 
+## Your apps' own view: OpenTelemetry
+
+Apps with an OpenTelemetry SDK, or a Collector, send to the dashboard's own address over OTLP/HTTP. It turns traces into requests, errors and latency per service, and logs into patterns.
+
+```sh
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://pi.local:8083   # on the app's container
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+export OTEL_EXPORTER_OTLP_COMPRESSION=none                 # gzip isn't supported
+```
+
+```sh
+contraire services                                     # every service: req/min, errors, p50 · p95 · p99
+contraire service checkout                             # its operations, failed and slowest requests, log patterns
+contraire export telemetry --csv > telemetry.csv       # per service and minute, the last hour
+contraire export metrics > metrics.jsonl               # CPU, memory, network, disk per container
+duckdb -c "COPY (FROM 'telemetry.csv') TO 'telemetry.parquet'"   # Parquet, if you have DuckDB
+```
+
 ## Take action
 
 Needs an **operate** or **admin** token. Every action is recorded under the token's name.

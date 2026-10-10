@@ -105,10 +105,14 @@ impl Docker {
     }
 
     fn send(&self, method: &str, path: &str, body: &[u8], timeout: Duration) -> io::Result<Box<dyn Conn>> {
+        self.send_typed(method, path, body, "application/json", timeout)
+    }
+
+    fn send_typed(&self, method: &str, path: &str, body: &[u8], ctype: &str, timeout: Duration) -> io::Result<Box<dyn Conn>> {
         let mut c = self.connect(timeout)?;
         let head = format!(
             "{method} {path} HTTP/1.1\r\nHost: docker\r\nConnection: close\r\n\
-             Content-Type: application/json\r\nContent-Length: {}\r\n{}\r\n",
+             Content-Type: {ctype}\r\nContent-Length: {}\r\n{}\r\n",
             body.len(),
             self.headers
         );
@@ -119,6 +123,14 @@ impl Docker {
 
     pub fn call(&self, method: &str, path: &str, body: Option<&[u8]>, timeout: Duration) -> io::Result<Reply> {
         let mut c = self.send(method, path, body.unwrap_or_default(), timeout)?;
+        let mut raw = Vec::new();
+        c.read_to_end(&mut raw)?;
+        parse_response(raw)
+    }
+
+    /// POST with an explicit content type (used to forward OTLP payloads as received).
+    pub fn call_typed(&self, method: &str, path: &str, body: &[u8], ctype: &str, timeout: Duration) -> io::Result<Reply> {
+        let mut c = self.send_typed(method, path, body, ctype, timeout)?;
         let mut raw = Vec::new();
         c.read_to_end(&mut raw)?;
         parse_response(raw)

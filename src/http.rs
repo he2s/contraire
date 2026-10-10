@@ -146,7 +146,9 @@ fn read_request(r: &mut impl BufRead) -> io::Result<Option<Request>> {
         .map(|v| v.parse().map_err(|_| bad("bad content-length")))
         .transpose()?
         .unwrap_or(0);
-    if len > MAX_BODY {
+    // OTLP exports are batches of telemetry; everything else is a small JSON request.
+    let limit = if req.path.starts_with("/v1/") { 4 * 1024 * 1024 } else { MAX_BODY };
+    if len > limit {
         return Err(bad("body too large"));
     }
     req.body.resize(len, 0);
