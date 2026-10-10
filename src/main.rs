@@ -10,6 +10,7 @@ mod live;
 mod logwatch;
 mod metrics;
 mod otlp;
+mod parquet;
 mod tokens;
 
 use std::collections::HashMap;
@@ -208,6 +209,12 @@ fn percent_decode(s: &str) -> String {
 
 /// Rows as JSON lines (default) or CSV with a header from the first row's keys.
 fn export(req: &Request, rows: Vec<Value>) -> Response {
+    if req.param("format") == Some("parquet") {
+        return match parquet::write(&rows) {
+            Some(f) => Response::new(200, "application/vnd.apache.parquet", f),
+            None => Response::error(404, "nothing to export yet"),
+        };
+    }
     if req.param("format") == Some("csv") {
         let cols: Vec<String> = rows.first().and_then(Value::as_object).map(|o| o.keys().cloned().collect()).unwrap_or_default();
         let mut out = cols.join(",") + "\n";

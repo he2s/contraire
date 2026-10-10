@@ -73,7 +73,8 @@ contraire services                                     # every service: req/min,
 contraire service checkout                             # its operations, failed and slowest requests, log patterns
 contraire export telemetry --csv > telemetry.csv       # per service and minute, the last hour
 contraire export metrics > metrics.jsonl               # CPU, memory, network, disk per container and minute, the last 24 h
-duckdb -c "COPY (FROM 'telemetry.csv') TO 'telemetry.parquet'"   # Parquet, if you have DuckDB
+contraire export metrics --parquet > metrics.parquet   # Parquet, for DuckDB, pandas or polars
+duckdb -c "SELECT container, max(mem) FROM 'metrics.parquet' GROUP BY 1 ORDER BY 2 DESC"   # e.g. peak memory per container
 ```
 
 ## Take action

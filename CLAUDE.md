@@ -20,7 +20,7 @@ When there is a choice, take the one that does this:
 - **Vectorize where volume makes it matter**, e.g. scanning log bytes with `memchr`, or columnar aggregation.
 - A new dependency must justify its compile time and memory on the Pi. A full async stack (tokio/hyper/axum) was rejected on purpose: thread-per-connection is enough for a LAN dashboard. Currently the only direct dependency is `serde_json`, with no proc-macro `serde_derive`.
 
-These principles apply to the observability parts too. Shipped: Prometheus `/metrics`, node and cgroup metrics (`metrics.rs`), log collection and patterns (`logwatch.rs`), an OTLP endpoint (`otlp.rs`), minute history on disk, and the drill-down UI. Still planned: columnar files (Parquet) for longer history.
+These principles apply to the observability parts too. Shipped: Prometheus `/metrics`, node and cgroup metrics (`metrics.rs`), log collection and patterns (`logwatch.rs`), an OTLP endpoint (`otlp.rs`), minute history on disk, and the drill-down UI. Parquet export ships (`parquet.rs`); still planned: Parquet rollups on disk for longer history.
 
 For high-volume data (log lines, events, samples), design for streaming, bounded memory, append-only files and columnar layouts from the start.
 
@@ -82,7 +82,7 @@ To test the Learn page before its content is pushed, serve `docs/learn/` locally
 
 ## Architecture
 
-The binary is `main.rs` plus twelve modules and one embedded page. Long-form content lives on GitHub.
+The binary is `main.rs` plus thirteen modules and one embedded page. Long-form content lives on GitHub.
 
 - **Naming:** `DISPLAY_NAME` (`src/main.rs`) is the name people see, currently "mopsfraugibtdentonan". The crate, binary and repository stay `contraire`. The UI gets the display name from `/api/config`, so never hard-code it in the page.
 - **`src/http.rs`:** a hand-rolled HTTP/1.1 server.
@@ -134,7 +134,8 @@ The binary is `main.rs` plus twelve modules and one embedded page. Long-form con
   - Up to 64 services and 32 operations each; names are looked up before insert, so a known service costs no allocation (4 allocs per 1,000-span batch, ~240 MB/s).
   - OTLP logs go to `logwatch` as per-service pattern miners. Metrics points are only counted.
   - `--otlp-forward` re-posts each raw batch from a separate thread; drops are counted, never block the receiver.
-  - Routes: `/api/telemetry`, `/api/telemetry/<service>`, `/api/telemetry/export` (and `/api/metrics/export`): JSON lines, or CSV with `?format=csv`.
+  - Routes: `/api/telemetry`, `/api/telemetry/<service>`, `/api/telemetry/export` (and `/api/metrics/export`): JSON lines, CSV with `?format=csv`, Parquet with `?format=parquet`.
+- **`src/parquet.rs`:** a minimal Parquet writer for exports: one row group, PLAIN, uncompressed, all columns REQUIRED (strings, INT64, DOUBLE inferred from JSON rows; missing values become "" or NaN). The Thrift compact footer is hand-encoded. Verified with pyarrow; the `parquet` crate would cost hundreds of KB.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/client.rs`:** client mode. When the first argument is a command (`ps`, `logs`, `mcp`, …), `main` hands off here and the server code never runs.
   - It talks to a server's HTTP API, reusing `docker.rs`'s HTTP client over `tcp://` with extra headers (`Bearer` token, `X-Contraire`).

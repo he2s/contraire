@@ -1217,7 +1217,7 @@ function viewTelemetry() {
   const T = S.tel;
   if (!T) return head("opentelemetry") + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
   const sv = T.services;
-  const dl = `<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="/api/telemetry/export?format=csv" download="telemetry.csv">CSV</a><a class="btn" href="/api/telemetry/export" download="telemetry.jsonl">JSON lines</a></div>`;
+  const dl = `<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="/api/telemetry/export?format=csv" download="telemetry.csv">CSV</a><a class="btn" href="/api/telemetry/export" download="telemetry.jsonl">JSON lines</a><a class="btn" href="/api/telemetry/export?format=parquet" download="telemetry.parquet">Parquet</a></div>`;
   if (!sv.length) return head("opentelemetry · waiting for data") + `<section class="card mood"><span class="badge ok" aria-hidden="true">~</span><div class="txt"><strong>No app has reported yet</strong>
     <span class="muted">Your own applications can tell this dashboard how they're doing: how many requests they serve, how many fail and how long they take. Point them here and this page fills in by itself within a minute.</span></div></section>` + otlpSetup(true);
   const rpm = sv.reduce((a, x) => a + x.rpm, 0), worst = sv.reduce((a, x) => x.requests_1h >= 20 && x.error_rate > (a?.error_rate ?? 0) ? x : a, null);

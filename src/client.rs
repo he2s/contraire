@@ -44,7 +44,7 @@ Commands:
   info                       Host and server facts
   services                   Telemetry: apps reporting over OpenTelemetry, with requests/min, errors, p50/p95/p99
   service <name>             One service: operations, failed and slowest requests, log patterns
-  export metrics|telemetry [--csv]   Metrics (24 h per minute) or telemetry (1 h per minute) as JSON lines or CSV
+  export metrics|telemetry [--csv|--parquet]   Metrics (24 h per minute) or telemetry (1 h per minute) as JSON lines, CSV or Parquet
   mcp                        Run an MCP server on stdio for Claude Code and other agents
 
 Options:
@@ -53,6 +53,7 @@ Options:
   --json          Print the raw JSON instead of a table
   --new           (patterns) only patterns that first appeared after the container started
   --csv           (export) CSV instead of JSON lines
+  --parquet       (export) Parquet, for DuckDB, pandas or polars; redirect it to a file
   --skill-from <PATH>   (init) copy the skill from a local file instead of GitHub
 
 Sessions: inside a folder made by `contraire init`, host and token come from .contraire/,
@@ -662,6 +663,7 @@ struct Args {
     timestamps: bool,
     new: bool,
     csv: bool,
+    parquet: bool,
     n: Option<u32>,
     since: Option<u64>,
     pos: Vec<String>,
@@ -677,6 +679,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         timestamps: false,
         new: false,
         csv: false,
+        parquet: false,
         n: None,
         since: None,
         pos: Vec::new(),
@@ -697,6 +700,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "-t" | "--timestamps" => a.timestamps = true,
             "--new" => a.new = true,
             "--csv" => a.csv = true,
+            "--parquet" => a.parquet = true,
             "-n" | "--tail" => a.n = Some(val("-n")?.parse().map_err(|_| "-n needs a number")?),
             "--since" => a.since = Some(val("--since")?.parse().map_err(|_| "--since needs minutes")?),
             "-h" | "--help" => a.pos.insert(0, "help".into()),
@@ -1027,6 +1031,16 @@ fn cli(r: &Remote, cmd: &str, a: &Args) -> Result<String, String> {
             let what = arg(1, "source: metrics or telemetry")?;
             if what != "metrics" && what != "telemetry" {
                 return Err(format!("export what? 'metrics' or 'telemetry', not '{what}'"));
+            }
+            if a.parquet {
+                // Binary: straight to stdout, never to a terminal.
+                use std::io::IsTerminal;
+                if io::stdout().is_terminal() {
+                    return Err(format!("Parquet is binary: redirect it, e.g. contraire export {what} --parquet > {what}.parquet"));
+                }
+                let b = r.call("GET", &format!("/api/{what}/export?format=parquet"), None, 30)?;
+                let _ = io::stdout().lock().write_all(&b);
+                return Ok(String::new());
             }
             r.get_text(&format!("/api/{what}/export{}", if a.csv { "?format=csv" } else { "" }))
         }

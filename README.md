@@ -79,7 +79,8 @@ contraire incidents               # crashes and failing health checks the flight
 contraire stacks                  # Compose stacks and what needs attention
 contraire events --since 30       # starts, stops with exit codes, OOM kills, health changes
 contraire services                # Telemetry: apps reporting over OpenTelemetry, with requests, errors, latency
-contraire export telemetry --csv  # the last hour per service and minute, for a spreadsheet or DuckDB
+contraire export telemetry --csv  # the last hour per service and minute, for a spreadsheet
+contraire export metrics --parquet > metrics.parquet   # 24 h per container and minute, for DuckDB, pandas or polars
 contraire init ops-pi             # a session folder for Claude Code: skill, reference, PROJECT.md, action log
 contraire ps --help               # everything else (add --json for raw output)
 ```

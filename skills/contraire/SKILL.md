@@ -121,7 +121,7 @@ Quote at most a few log lines; the decisive one beats a wall of output. Say when
 | `contraire patterns <c> [--new]` | The whole log as counted patterns | read |
 | `contraire incidents` / `incident <id>` | Incidents and their postmortems | read |
 | `contraire services` / `service <name>` | Telemetry: requests, errors, latency per service | read |
-| `contraire export metrics\|telemetry [--csv]` | Metrics (24 h) or telemetry (1 h), per minute, as JSON lines or CSV | read |
+| `contraire export metrics\|telemetry [--csv\|--parquet]` | Metrics (24 h) or telemetry (1 h), per minute, as JSON lines, CSV or Parquet | read |
 | `contraire start\|stop\|restart\|pause\|unpause <c>` | One container | operate |
 | `contraire stack <name> start\|stop\|restart` | Whole stack, dependency order | operate |
 | `contraire activity [-n N]` | Audit log | admin |
