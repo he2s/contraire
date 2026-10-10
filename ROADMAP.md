@@ -61,7 +61,7 @@ These follow the principles in `CLAUDE.md`: streaming, bounded memory, append-on
 
 **Done:**
 - node and container metrics from `/proc` and cgroup files every 10 s (far cheaper than Docker's stats API), 1 h at 10 s and 24 h at 1 min, the minute history saved to `metrics.bin` so it survives restarts
-- Prometheus `/metrics` endpoint
+- Prometheus `/metrics` endpoint: containers, host, telemetry per service, the dashboard itself
 - log collection with live pattern mining, and the flight recorder (Incidents) for crashes, OOM kills and failing health checks
 - OTLP/HTTP endpoint: traces become requests, errors and latency per service and operation, with exemplars; OTLP logs become patterns; `--otlp-forward`
 - JSON lines and CSV export of metrics and telemetry
@@ -69,7 +69,6 @@ These follow the principles in `CLAUDE.md`: streaming, bounded memory, append-on
 
 **Still to do:**
 - **Server-side cache of `/containers/json`, shared by all tabs.** Measured: Docker needs ~100 ms to list 30 containers, while the server alone answers ~12k req/s. Every open tab currently triggers its own Docker call on each event. Swap snapshots atomically, without locks.
-- telemetry on the Prometheus endpoint
 - columnar files (Parquet) for history beyond 24 h
 
 ## 6. Budgets (enforced on every automated build)

@@ -625,7 +625,7 @@ impl App {
         Ok(Response::json(200, body.to_string()).with_header("Cache-Control", "no-store"))
     }
 
-    /// Prometheus text exposition: containers (labelled by name, stack, service), host, self.
+    /// Prometheus text exposition: containers (labelled by name, stack, service), host, telemetry per service, self.
     fn prometheus(&self) -> std::io::Result<Response> {
         use std::fmt::Write as _;
         let list: Vec<Value> = serde_json::from_slice(&self.docker.get("/containers/json?all=1")?.body).unwrap_or_default();
@@ -689,6 +689,41 @@ impl App {
                 let _ = writeln!(out, "# HELP contraire_host_{name} {help}\n# TYPE contraire_host_{name} gauge\ncontraire_host_{name} {}", h[i]);
             }
         }
+        // Telemetry: what apps report over OpenTelemetry, as windowed gauges (the dashboard keeps
+        // one hour, not ever-growing counters), plus the receiver's own counters.
+        let tel = self.otlp.overview();
+        let services = tel["services"].as_array().cloned().unwrap_or_default();
+        let gauges = [
+            ("requests_per_minute", "rpm", "Incoming requests per minute (server and consumer spans), last 5 minutes"),
+            ("error_ratio", "error_rate", "Share of requests with error status, last hour"),
+        ];
+        for (name, field, help) in gauges {
+            let _ = writeln!(out, "# HELP contraire_service_{name} {help}\n# TYPE contraire_service_{name} gauge");
+            for x in services.iter().filter(|x| x["requests_1h"].as_u64() > Some(0)) {
+                let _ = writeln!(out, "contraire_service_{name}{{service=\"{}\"}} {}", esc(x["service"].as_str().unwrap_or("")), x[field]);
+            }
+        }
+        let _ = writeln!(out, "# HELP contraire_service_latency_seconds Request latency percentiles, last hour\n# TYPE contraire_service_latency_seconds gauge");
+        for x in services.iter().filter(|x| x["requests_1h"].as_u64() > Some(0)) {
+            // `quantile` is reserved for summaries; these are windowed gauges.
+            for (q, f) in [("50", "p50"), ("95", "p95"), ("99", "p99")] {
+                if let Some(ms) = x[f].as_f64() {
+                    let _ = writeln!(out, "contraire_service_latency_seconds{{service=\"{}\",percentile=\"{q}\"}} {}", esc(x["service"].as_str().unwrap_or("")), ms / 1000.0);
+                }
+            }
+        }
+        for (name, field, help) in [("spans_total", "spans", "Spans received"), ("log_records_total", "logs", "OTLP log records received")] {
+            let _ = writeln!(out, "# HELP contraire_service_{name} {help}\n# TYPE contraire_service_{name} counter");
+            for x in &services {
+                let _ = writeln!(out, "contraire_service_{name}{{service=\"{}\"}} {}", esc(x["service"].as_str().unwrap_or("")), x[field]);
+            }
+        }
+        let _ = writeln!(
+            out,
+            "# HELP contraire_otlp_batches_total OTLP batches accepted\n# TYPE contraire_otlp_batches_total counter\ncontraire_otlp_batches_total {}\n\
+             # HELP contraire_otlp_rejected_total OTLP batches rejected (bad payload, gzip, queue full)\n# TYPE contraire_otlp_rejected_total counter\ncontraire_otlp_rejected_total {}",
+            tel["received_batches"], tel["rejected_batches"]
+        );
         let rss = proc_status("VmRSS").unwrap_or(0) * 1024;
         let _ = writeln!(
             out,

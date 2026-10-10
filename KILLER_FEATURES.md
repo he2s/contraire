@@ -20,7 +20,7 @@ Most AI-ops tools put a model or a heavy agent next to the workload. Here the ed
 | 8 | Push-native MCP | Agents subscribe to changes instead of polling | 0 on the edge | S | idea |
 | 9 | Plain-language status, no AI | A narrative a skeptic can trust: rules, not guesses | ~0 | S | partly (Overview findings) |
 | 10 | Live lessons | The docs explain *your* containers | 0 (docs on GitHub) | S | partly (live blocks) |
-| 11 | An OpenTelemetry edge backend in a few MB | OTLP in, columnar files out, on a Pi | bounded | L | **shipped** in memory (Parquet open) |
+| 11 | An OpenTelemetry edge backend in a few MB | OTLP in, columnar files out, on a Pi | bounded | L | **shipped** in memory and on `/metrics` (Parquet open) |
 | 12 | Watts per container | Energy cost an executive can read | ~0 | S | idea |
 | 13 | Serverless fleet | Several Pis, one UI, no central server | ~0 | M | idea |
 
@@ -116,7 +116,7 @@ Lessons come from GitHub but are *bound to this host*. The ports lesson highligh
 
 ## 11. An OpenTelemetry edge backend in a few MB
 
-**Status: shipped in memory** (`otlp.rs`, the Telemetry page, `contraire services`): OTLP/HTTP traces and logs, one hour per service in fixed rings, `--otlp-forward`, CSV/JSON lines export. Still open: rolling up into Parquet, and telemetry on `/metrics`.
+**Status: shipped in memory** (`otlp.rs`, the Telemetry page, `contraire services`): OTLP/HTTP traces and logs, one hour per service in fixed rings, `--otlp-forward`, CSV/JSON lines export, and per-service requests, errors and latency on `/metrics`. Still open: rolling up into Parquet.
 
 The edge accepts OTLP (metrics, logs, traces) from local apps:
 - **bounded:** it keeps fixed-size ring buffers

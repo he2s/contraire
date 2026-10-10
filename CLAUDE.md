@@ -118,7 +118,7 @@ The binary is `main.rs` plus twelve modules and one embedded page. Long-form con
   - It never calls the Docker API, which costs about 1 s of daemon time per container.
   - History lives in rings of `AtomicU32` (f32 bits): 1 h at 10 s and 24 h at 1-minute averages, about 50 KB per container, allocated on first sight.
   - One writer, lock-free readers. Slots outlive their container and are reused least-recently-seen.
-  - Routes: `/api/metrics` (latest values and sparklines), `/api/metrics/<id>?range=1h|24h`, and `/metrics` (Prometheus text format, labelled with name, stack and service).
+  - Routes: `/api/metrics` (latest values and sparklines), `/api/metrics/<id>?range=1h|24h`, and `/metrics` (Prometheus text format: containers labelled with name, stack and service; the host; telemetry per service as windowed gauges `contraire_service_*` with a `percentile` label for latency, since `quantile` is reserved for summaries; the dashboard itself). Check changes with `promtool check metrics`.
   - Minute averages are appended to `<state>/metrics.bin` (40-byte records, rotated at 2 MB to `.1`) and replayed on start for the host and running containers; minutes without data become NaN (`null` in JSON), so series stay aligned to the clock.
   - Inside a container it needs `--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro --pid=host`; without them only host metrics work.
 - **`src/logwatch.rs`:** log patterns and the crash flight recorder.
