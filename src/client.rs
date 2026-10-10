@@ -911,72 +911,13 @@ fn follow_logs(r: &Remote, c: &str, tail: u32, ts: bool) -> Result<(), String> {
 
 const PROTOCOL: &str = "2025-06-18";
 
+/// The MCP tool catalogue as plain JSON data: parsed on request instead of expanding
+/// `json!` into ~24 KB of code. Annotations: read-only tools never change anything;
+/// start/stop/restart/stack_action do, and are marked destructive where downtime results.
+const TOOLS: &str = r#"[{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"All containers on the Docker host with plain-language status (running, unhealthy, failed (code), paused, exited), uptime, compose stack, published ports and image.","inputSchema":{"properties":{},"type":"object"},"name":"list_containers","title":"List containers"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"State, health check streak, exit code with an explanation, restarts, image, command, ports, networks, mounts, memory limit and compose stack/service/dependencies.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"inspect_container","title":"Inspect a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The last lines of a container's logs (stdout and stderr). Use 'grep' to keep only matching lines.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"grep":{"description":"Case-insensitive substring filter","type":"string"},"tail":{"description":"Number of lines, default 100, max 2000","type":"integer"}},"required":["container"],"type":"object"},"name":"container_logs","title":"Container logs"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU %, memory (and limit), network bytes and process count of a running container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"container_stats","title":"Container resource usage"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Current CPU (% of one core), memory, network and disk rates per container, busiest first, plus host CPU, load and memory. Sampled from cgroups every 10 s.","inputSchema":{"properties":{},"type":"object"},"name":"top_containers","title":"Resource use per container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Now / peak / average CPU, memory, network and disk over the last hour (10 s samples) or 24 hours (1 min averages), plus the memory trend. Use it to spot leaks, spikes before a crash, or a noisy neighbour.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"range":{"description":"Default 1h","enum":["1h","24h"],"type":"string"}},"required":["container"],"type":"object"},"name":"container_metrics","title":"Container resource history"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"The container's log since it started, grouped into patterns with counts (variable parts shown as <*>), errors first, with first/last seen and whether the pattern is NEW since start. Far cheaper than reading raw logs; read raw lines afterwards only for the patterns that matter.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"},"only_new":{"description":"Only patterns that first appeared after startup (what changed)","type":"boolean"}},"required":["container"],"type":"object"},"name":"log_patterns","title":"Log patterns of a container"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Crashes caught by the flight recorder (non-zero exit or OOM): without an id, the list; with an id, the postmortem with exit reason, last log lines, error and new patterns and CPU/memory in the 15 minutes before the end.","inputSchema":{"properties":{"id":{"description":"Incident id from the list","type":"string"}},"type":"object"},"name":"incidents","title":"Crash postmortems"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker Compose projects on the host: how many services are up and which need attention.","inputSchema":{"properties":{},"type":"object"},"name":"list_stacks","title":"List compose stacks"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Container starts, stops (with exit codes), restarts, OOM kills, health changes and image pulls in the last N minutes.","inputSchema":{"properties":{"minutes":{"description":"Window in minutes, default 60, max 1440","type":"integer"}},"type":"object"},"name":"recent_events","title":"Recent Docker events"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Who changed what through the dashboard, when, and whether it worked. Needs an admin token.","inputSchema":{"properties":{"limit":{"description":"Entries, default 30","type":"integer"}},"type":"object"},"name":"activity","title":"Audit log"},{"annotations":{"openWorldHint":false,"readOnlyHint":true},"description":"Docker host name, version, OS, CPUs, memory, container and image counts, and the dashboard's own footprint.","inputSchema":{"properties":{},"type":"object"},"name":"host_info","title":"Host info"},{"annotations":{"destructiveHint":false,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Start a stopped container.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"start_container","title":"Start a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Restart a container. Brief downtime for that service.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"restart_container","title":"Restart a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Stop a running container. Its service is down until started again.","inputSchema":{"properties":{"container":{"description":"Container name or ID","type":"string"}},"required":["container"],"type":"object"},"name":"stop_container","title":"Stop a container"},{"annotations":{"destructiveHint":true,"idempotentHint":true,"openWorldHint":false,"readOnlyHint":false},"description":"Act on every container of a compose stack in dependency order (dependencies start first, stop last).","inputSchema":{"properties":{"action":{"enum":["start","stop","restart"],"type":"string"},"stack":{"description":"Compose project name","type":"string"}},"required":["stack","action"],"type":"object"},"name":"stack_action","title":"Start, stop or restart a compose stack"}]"#;
+
 fn tools() -> Value {
-    let c = json!({ "type": "object", "properties": { "container": { "type": "string", "description": "Container name or ID" } }, "required": ["container"] });
-    let ro = json!({ "readOnlyHint": true, "openWorldHint": false });
-    let act = |destructive: bool| json!({ "readOnlyHint": false, "destructiveHint": destructive, "idempotentHint": true, "openWorldHint": false });
-    json!([
-        { "name": "list_containers", "title": "List containers",
-          "description": "All containers on the Docker host with plain-language status (running, unhealthy, failed (code), paused, exited), uptime, compose stack, published ports and image.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
-        { "name": "inspect_container", "title": "Inspect a container",
-          "description": "State, health check streak, exit code with an explanation, restarts, image, command, ports, networks, mounts, memory limit and compose stack/service/dependencies.",
-          "inputSchema": c, "annotations": ro },
-        { "name": "container_logs", "title": "Container logs",
-          "description": "The last lines of a container's logs (stdout and stderr). Use 'grep' to keep only matching lines.",
-          "inputSchema": { "type": "object", "properties": {
-              "container": { "type": "string", "description": "Container name or ID" },
-              "tail": { "type": "integer", "description": "Number of lines, default 100, max 2000" },
-              "grep": { "type": "string", "description": "Case-insensitive substring filter" } }, "required": ["container"] },
-          "annotations": ro },
-        { "name": "container_stats", "title": "Container resource usage",
-          "description": "Current CPU %, memory (and limit), network bytes and process count of a running container.",
-          "inputSchema": c, "annotations": ro },
-        { "name": "top_containers", "title": "Resource use per container",
-          "description": "Current CPU (% of one core), memory, network and disk rates per container, busiest first, plus host CPU, load and memory. Sampled from cgroups every 10 s.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
-        { "name": "container_metrics", "title": "Container resource history",
-          "description": "Now / peak / average CPU, memory, network and disk over the last hour (10 s samples) or 24 hours (1 min averages), plus the memory trend. Use it to spot leaks, spikes before a crash, or a noisy neighbour.",
-          "inputSchema": { "type": "object", "properties": {
-              "container": { "type": "string", "description": "Container name or ID" },
-              "range": { "type": "string", "enum": ["1h", "24h"], "description": "Default 1h" } }, "required": ["container"] },
-          "annotations": ro },
-        { "name": "log_patterns", "title": "Log patterns of a container",
-          "description": "The container's log since it started, grouped into patterns with counts (variable parts shown as <*>), errors first, with first/last seen and whether the pattern is NEW since start. Far cheaper than reading raw logs; read raw lines afterwards only for the patterns that matter.",
-          "inputSchema": { "type": "object", "properties": {
-              "container": { "type": "string", "description": "Container name or ID" },
-              "only_new": { "type": "boolean", "description": "Only patterns that first appeared after startup (what changed)" } }, "required": ["container"] },
-          "annotations": ro },
-        { "name": "incidents", "title": "Crash postmortems",
-          "description": "Crashes caught by the flight recorder (non-zero exit or OOM): without an id, the list; with an id, the postmortem with exit reason, last log lines, error and new patterns and CPU/memory in the 15 minutes before the end.",
-          "inputSchema": { "type": "object", "properties": { "id": { "type": "string", "description": "Incident id from the list" } } },
-          "annotations": ro },
-        { "name": "list_stacks", "title": "List compose stacks",
-          "description": "Docker Compose projects on the host: how many services are up and which need attention.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
-        { "name": "recent_events", "title": "Recent Docker events",
-          "description": "Container starts, stops (with exit codes), restarts, OOM kills, health changes and image pulls in the last N minutes.",
-          "inputSchema": { "type": "object", "properties": { "minutes": { "type": "integer", "description": "Window in minutes, default 60, max 1440" } } },
-          "annotations": ro },
-        { "name": "activity", "title": "Audit log",
-          "description": "Who changed what through the dashboard, when, and whether it worked. Needs an admin token.",
-          "inputSchema": { "type": "object", "properties": { "limit": { "type": "integer", "description": "Entries, default 30" } } },
-          "annotations": ro },
-        { "name": "host_info", "title": "Host info",
-          "description": "Docker host name, version, OS, CPUs, memory, container and image counts, and the dashboard's own footprint.",
-          "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
-        { "name": "start_container", "title": "Start a container", "description": "Start a stopped container.", "inputSchema": c, "annotations": act(false) },
-        { "name": "restart_container", "title": "Restart a container",
-          "description": "Restart a container. Brief downtime for that service.", "inputSchema": c, "annotations": act(true) },
-        { "name": "stop_container", "title": "Stop a container",
-          "description": "Stop a running container. Its service is down until started again.", "inputSchema": c, "annotations": act(true) },
-        { "name": "stack_action", "title": "Start, stop or restart a compose stack",
-          "description": "Act on every container of a compose stack in dependency order (dependencies start first, stop last).",
-          "inputSchema": { "type": "object", "properties": {
-              "stack": { "type": "string", "description": "Compose project name" },
-              "action": { "type": "string", "enum": ["start", "stop", "restart"] } }, "required": ["stack", "action"] },
-          "annotations": act(true) },
-    ])
+    serde_json::from_str(TOOLS).unwrap_or_default()
 }
 
 fn call_tool(r: &Remote, name: &str, args: &Value) -> Result<String, String> {

@@ -78,7 +78,7 @@ These are listed in `CLAUDE.md` and follow its principles: streaming, bounded me
 
 | Budget | Limit |
 |---|---|
-| Server binary | < 1 MB |
+| Server binary | < 1.25 MB (raised from 1 MB on 2026-10-10 for metrics, log patterns and built-in help: disk ranks below memory and CPU, and explanations are not cut for size) |
 | Memory at idle | < 5 MB |
 | Web page, compressed | < 120 KB |
 | JS frameworks | none |

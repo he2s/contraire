@@ -24,7 +24,7 @@ for a in "$@"; do
 done
 
 # Budgets (KB, %, count). Keep in sync with ROADMAP.md.
-B_BINARY=1024 B_PAGE=120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384 B_THREADS_AFTER=1
+B_BINARY=1280 B_PAGE=120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384 B_THREADS_AFTER=1
 
 BIN=target/release/contraire
 cargo build --release --quiet

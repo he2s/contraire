@@ -428,6 +428,21 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
   .cmds { border-color: #000; }
 }
 
+/* hover line + help popovers */
+.hint { margin-top: auto; padding: 12px 16px; font-size: 12.5px; line-height: 1.4; color: var(--ink-2); border-top: var(--rule) solid var(--line); min-height: 64px; background: var(--panel); }
+.hint b { color: var(--accent-ink); }
+.side > .hint { border-bottom: 0; }
+.side > .foot { margin-top: 0; }
+.help { display: inline-grid; place-items: center; width: 18px; height: 18px; margin-left: 6px; border: 1.5px solid currentColor; border-radius: 50%; background: transparent; color: var(--muted); font: 700 11px/1 var(--body); cursor: pointer; vertical-align: middle; flex: none; opacity: .75; transition: opacity .12s, color .12s, background .12s; letter-spacing: 0; text-transform: none; }
+.help:hover, .help[aria-expanded="true"] { opacity: 1; color: #fff; background: var(--accent); border-color: var(--accent); }
+h1 .help { width: 22px; height: 22px; font-size: 13px; position: relative; top: -6px; }
+.pop { position: fixed; z-index: 50; width: min(360px, calc(100vw - 24px)); background: var(--panel); color: var(--text); border: var(--rule) solid var(--line); box-shadow: 8px 8px 0 color-mix(in srgb, var(--line) 25%, transparent); padding: 14px 16px 10px; font-size: 13.5px; line-height: 1.5; animation: popin .14s ease-out; }
+.pop b#pop-t { display: block; font-family: var(--display); font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+.pop code { font-family: var(--mono); font-size: .9em; background: var(--chip); padding: 0 4px; }
+.pop p { margin: 0 0 8px; }
+.pop .pop-x { display: block; font-size: 11px; margin-top: 4px; }
+@keyframes popin { from { opacity: 0; transform: translateY(-4px); } }
+
 /* modal + toast */
 .modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 30; background: rgba(17,17,17,.45); }
 .modal .box { background: var(--panel); border: var(--rule) solid var(--line); padding: 22px; width: min(460px, calc(100vw - 32px)); box-shadow: 12px 12px 0 rgba(17,17,17,.25); }
@@ -455,15 +470,15 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 
     <div class="nav">
       <span class="navlabel">Manage</span>
-      <a href="#containers" data-nav="containers"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
-      <a href="#stacks" data-nav="stacks"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
-      <a href="#images" data-nav="images"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
-      <a href="#incidents" data-nav="incidents"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><span>Incidents</span><span class="count" id="n-inc">–</span></a>
-      <a href="#activity" data-nav="activity"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
-      <a href="#learn" data-nav="learn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
-      <a href="#cheatsheet" data-nav="cheatsheet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
-      <a href="#access" data-nav="access"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg><span>Access</span></a>
-      <a href="#about" data-nav="about"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
+      <a href="#containers" data-nav="containers" data-hint="Every container on this host, with live status, resources and actions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
+      <a href="#stacks" data-nav="stacks" data-hint="Docker Compose projects: start, stop or restart a whole stack in dependency order"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
+      <a href="#images" data-nav="images" data-hint="Images on disk: what uses them, how big they are, pull and clean up"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
+      <a href="#incidents" data-nav="incidents" data-hint="Crashes caught by the flight recorder, with a postmortem each"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><span>Incidents</span><span class="count" id="n-inc">–</span></a>
+      <a href="#activity" data-nav="activity" data-hint="Who changed what through this dashboard, and whether it worked"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
+      <a href="#learn" data-nav="learn" data-hint="Short illustrated lessons on containers, Linux and Compose, loaded from GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
+      <a href="#cheatsheet" data-nav="cheatsheet" data-hint="Every CLI command and the Claude Code / MCP setup on one page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
+      <a href="#access" data-nav="access" data-hint="API tokens for scripts and AI agents, with scopes and expiry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg><span>Access</span></a>
+      <a href="#about" data-nav="about" data-hint="What this dashboard itself costs: memory, CPU, disk, threads"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
     </div>
 
     <div class="sbox host-box">
@@ -488,6 +503,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
       <button data-theme-set="auto" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Auto</button>
     </div>
 
+    <div class="hint" id="hint" aria-live="polite">Point at anything for a short description. <b>?</b> buttons explain more.</div>
     <div class="foot"><span class="mono" id="f-sock"></span><span id="f-ver"></span></div>
   </nav>
 
@@ -505,6 +521,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
   </div>
 </div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="pop" id="pop" role="dialog" aria-modal="false" aria-labelledby="pop-t" hidden><b id="pop-t"></b><div id="pop-b"></div><span class="pop-x muted">Click anywhere or press Esc to close</span></div>
 
 <script>
 "use strict";
@@ -599,6 +616,88 @@ function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
     $("#modal").onkeydown = e => { if (e.key === "Escape") done(false); if (e.key === "Enter") okb.click(); };
   });
 }
+
+/* ---------- help: "?" popovers and the hover line ----------
+   Keyed by the visible label, so every card, column and page with that title gets one.
+   The page ships gzip-compressed, so this text costs ~1/3 of its size in the binary. */
+const HELP = {
+  "containers": ["Containers", "Every container on this Docker host. Status, CPU and memory update live: Docker <em>pushes</em> events to the page instead of the page polling. Click a row for logs, patterns, history and details."],
+  "stacks": ["Stacks", "Docker Compose projects, recognised from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
+  "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
+  "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
+  "activity": ["Activity", "An append-only audit log of every change made through this dashboard, by a person (browser) or a token (script, AI agent), including refused attempts. Bounded to about 2 MB on disk. Changes made with plain <code>docker</code> on the host appear as events, not here."],
+  "access": ["Access", "API tokens let scripts and AI agents use this dashboard without your password. Only a SHA-256 fingerprint is stored; the token is shown once. Scopes: <code>read</code> looks, <code>operate</code> also starts/stops/restarts, <code>admin</code> also removes, prunes and manages tokens."],
+  "cheat sheet": ["Cheat sheet", "Every command of the <code>contraire</code> CLI and the Claude Code / MCP setup on one page. Loaded live from GitHub, so it adds nothing to the program; examples use this server's address."],
+  "learn docker": ["Learn", "Short lessons on containers, Linux, networking, data and Compose. Like the cheat sheet they load from GitHub at runtime, so the binary stays tiny."],
+  "this dashboard": ["This dashboard", "What this program itself costs, read from <code>/proc/self</code>: memory, CPU time, the size of its one file, threads and connections. One thread serves each browser tab; idle ones exit within 15 s."],
+  "running": ["Running", "Containers that are up. The bar shows the whole fleet: green running, amber paused, red failed or unhealthy, grey stopped on purpose."],
+  "needs attention": ["Needs attention", "Containers that are unhealthy (failing their health check), restarting, or that exited with a non-zero code. Exit code 0 means it finished normally, so those count as stopped, not failed."],
+  "images on disk": ["Images on disk", "Total size of all images as Docker reports it. Shared layers are counted once per image here, so the real disk use can be lower."],
+  "host": ["Host", "The machine Docker runs on. CPU is the share of all cores in use, from <code>/proc/stat</code>; memory excludes reclaimable cache, from <code>/proc/meminfo</code>. Load is the average number of processes waiting for a CPU over one minute."],
+  "status": ["Status", "<b>Running</b>, <b>Paused</b> (frozen in place), <b>Unhealthy</b> (running but failing its health check), <b>Restarting</b> (crash loop), <b>Failed (code)</b> (exited with an error), <b>Exited</b> (stopped on purpose)."],
+  "cpu · memory": ["CPU · Memory", "Read straight from the container's cgroup files every 10 s: no Docker API calls, which would cost the daemon about a second per container. CPU is % of <em>one</em> core, so 200% means two busy cores. Memory leaves out page cache the kernel can reclaim, like <code>docker stats</code>. The sparkline is the last 5 minutes."],
+  "ports": ["Ports", "<code>:8080</code> means port 8080 of this machine forwards into the container; click to open it. <code>80/tcp</code> without a colon is only reachable inside Docker networks. <em>internal</em>: nothing published."],
+  "up / since": ["Up / since", "Docker's own summary: how long it has been running, or when it stopped and with which exit code."],
+  "actions": ["Actions", "Restart, stop, start, pause/resume or remove. Every action is recorded in Activity. Removing deletes the container and its anonymous data, never named volumes."],
+  "recent events": ["Recent events", "What Docker itself reports: starts, stops with their exit codes, out-of-memory kills, health changes, pulls. Pushed to the page as they happen; the last hour is loaded on open. Health-check noise is filtered out by Docker before it reaches us."],
+  "history": ["History", "CPU, memory, network and disk from the cgroup sampler: the last hour at 10-second resolution, or 24 hours as 1-minute averages. Kept in fixed rings of about 50 KB per container: memory use never grows."],
+  "log patterns": ["Log patterns", "Every line this container printed since it started, grouped: numbers, times, IDs and addresses become <code>‹·›</code>, so a million lines shrink to a few dozen patterns with counts. <b>NEW</b> marks patterns that first appeared after startup: often exactly what broke. Runs live inside the dashboard, without allocating memory for known patterns."],
+  "error patterns": ["Error patterns", "Patterns from lines mentioning errors, panics, exceptions, refusals or failures, with how often each appeared before the crash."],
+  "new since it started": ["New since it started", "Patterns that first appeared more than two minutes after the container started: the messages that weren't there when it was healthy."],
+  "process": ["Process", "Facts about the running dashboard process, from <code>/proc/self</code> and its own counters."],
+  "new token": ["New token", "Give it a name you'll recognise in Activity (e.g. <code>claude-laptop</code>), the smallest scope that does the job, and an expiry. Agents usually need <code>operate</code>: they can restart things but never delete them."],
+  "details": ["Details", "Full ID, image, command, ports, networks, mounts, restart policy and, for Compose containers, the stack, service, dependencies and compose file."],
+  "environment": ["Environment", "Environment variables often hold passwords and API keys, so they stay hidden until you reveal them. Anyone with access to this dashboard can, though."],
+  "manage": ["This dashboard", "One file of under a megabyte, about 3 MB of memory, no dependencies. The sidebar boxes show the host and the dashboard's own cost live."],
+  "theme": ["Theme", "Light, dark, or follow your system (Auto). Remembered in this browser only."],
+  "tabs": ["Container views", "<b>Logs</b>: live output, filter, levels, download. <b>Patterns</b>: the whole log grouped and counted. <b>Live stats</b>: per-second samples from Docker, plus 1 h / 24 h history. <b>Details</b>: configuration and change history. <b>Environment</b>: variables, hidden by default."],
+};
+function helpBtn(key) {
+  return `<button class="help" data-help="${esc(key)}" aria-label="Explain: ${esc(HELP[key][0])}" aria-expanded="false" title="What is this?">?</button>`;
+}
+/* Attach "?" buttons by label text: page titles, card titles, column headers, sidebar boxes. */
+function decorateHelp(root) {
+  const label = el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim().toLowerCase();
+  root.querySelectorAll(".ph h1, main h2, .stat .top > span:first-child, .tr.th > span, .sbox .k, .navlabel").forEach(el => {
+    if (el.querySelector(".help")) return;
+    const k = label(el);
+    if (HELP[k]) el.insertAdjacentHTML("beforeend", helpBtn(k));
+  });
+  root.querySelectorAll('.tabs[role="tablist"]').forEach(t => { if (!t.nextElementSibling?.classList?.contains("help")) t.insertAdjacentHTML("afterend", helpBtn("tabs")); });
+  const seg = document.querySelector(".seg");
+  if (seg && !seg.querySelector(".help")) seg.insertAdjacentHTML("beforeend", `<span style="display:grid;place-items:center;padding:0 2px 0 8px">${helpBtn("theme")}</span>`);
+}
+function openHelp(btn) {
+  const pop = $("#pop"), [title, body] = HELP[btn.dataset.help];
+  document.querySelectorAll('.help[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+  $("#pop-t").textContent = title;
+  $("#pop-b").innerHTML = `<p>${body}</p>`;
+  pop.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(12, Math.min(innerWidth - w - 12, r.left - 12)) + "px";
+  pop.style.top = (r.bottom + h + 12 < innerHeight ? r.bottom + 8 : Math.max(12, r.top - h - 8)) + "px";
+  pop.focus?.();
+}
+function closeHelp() {
+  $("#pop").hidden = true;
+  document.querySelectorAll('.help[aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+let helpQueued = false;
+new MutationObserver(() => {
+  if (helpQueued) return;
+  helpQueued = true;
+  requestAnimationFrame(() => { helpQueued = false; decorateHelp(document); });
+}).observe(document.body, { childList: true, subtree: true });
+/* The hover line: describe whatever the pointer (or keyboard focus) is on. */
+function showHint(e) {
+  const el = e.target.closest?.("[data-hint], [title], [aria-label], .help");
+  if (!el || el.id === "hint") return;
+  const text = el.dataset.help ? `${HELP[el.dataset.help][0]}: click for an explanation` : el.dataset.hint || el.getAttribute("title") || el.getAttribute("aria-label");
+  if (text && text !== $("#hint").textContent) $("#hint").textContent = text;
+}
+document.addEventListener("mouseover", showHint);
+document.addEventListener("focusin", showHint);
 
 /* ---------- theme ---------- */
 function setTheme(t) {
@@ -1670,6 +1769,9 @@ function render(soft) {
 
 /* ---------- events ---------- */
 document.addEventListener("click", async e => {
+  const hb = e.target.closest(".help");
+  if (hb) { e.preventDefault(); e.stopPropagation(); return hb.getAttribute("aria-expanded") === "true" ? closeHelp() : openHelp(hb); }
+  if (!$("#pop").hidden && !e.target.closest("#pop")) closeHelp();
   const cp = e.target.closest("[data-copy], [data-copycode]");
   if (cp) {
     e.preventDefault(); e.stopPropagation();
@@ -1765,6 +1867,7 @@ document.addEventListener("change", e => {
   if (e.target.id === "pat-new") { S.patNew = e.target.checked; loadPatterns(); }
 });
 document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("#pop").hidden) { closeHelp(); return; }
   if (!$("#modal").hidden) return;
   const tag = document.activeElement?.tagName;
   if (e.key === "/" && !/INPUT|SELECT|TEXTAREA/.test(tag)) { const q = $("#q") || $("#cs-q") || $("#lq"); if (q) { e.preventDefault(); q.focus(); } }
