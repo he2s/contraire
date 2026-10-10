@@ -198,7 +198,7 @@ One file for every role: dashboard, client, MCP server. Releases are built by Gi
 
 ```sh
 contraire --version                                    # which version you have
-CONTRAIRE_VERSION=v0.1.3 sh install.sh                 # install a specific release
+CONTRAIRE_VERSION=v0.1.4 sh install.sh                 # install a specific release
 curl -fsSLO https://github.com/he2s/contraire/releases/latest/download/contraire-linux-arm64   # download by hand
 curl -fsSL https://github.com/he2s/contraire/releases/latest/download/SHA256SUMS | sha256sum -c --ignore-missing   # …and verify it
 cargo build --release                                  # build it yourself (compiles on a Pi 3, too)
