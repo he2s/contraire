@@ -2,13 +2,74 @@
   "title": "Learn Docker",
   "source": "https://github.com/he2s/contraire/tree/main/docs/learn",
   "chapters": [
-    { "slug": "what-is-a-container", "file": "what-is-a-container.md", "title": "What is a container?", "summary": "Apps in sealed boxes", "minutes": 4, "hue": 250 },
-    { "slug": "images", "file": "images.md", "title": "Images and layers", "summary": "Recipes, not cakes", "minutes": 5, "hue": 205 },
-    { "slug": "under-the-hood", "file": "under-the-hood.md", "title": "How Linux does it", "summary": "Namespaces, cgroups, overlays", "minutes": 6, "hue": 165 },
-    { "slug": "ports-and-networks", "file": "ports-and-networks.md", "title": "Ports and networks", "summary": "Letting the world in", "minutes": 4, "hue": 30 },
-    { "slug": "keeping-data", "file": "keeping-data.md", "title": "Keeping your data", "summary": "Volumes and bind mounts", "minutes": 4, "hue": 330 },
-    { "slug": "compose", "file": "compose.md", "title": "Compose", "summary": "One file, many containers", "minutes": 5, "hue": 280 },
-    { "slug": "raspberry-pi", "file": "raspberry-pi.md", "title": "On a Raspberry Pi", "summary": "Small machine, real work", "minutes": 3, "hue": 345 },
-    { "slug": "cheat-sheet", "file": "cheat-sheet.md", "title": "Cheat sheet", "summary": "Everything on one page", "minutes": 2, "hue": 120 }
-  ]
+    {
+      "slug": "what-is-a-container",
+      "file": "what-is-a-container.md",
+      "title": "What is a container?",
+      "summary": "Apps in sealed boxes",
+      "minutes": 4,
+      "hue": 250
+    },
+    {
+      "slug": "images",
+      "file": "images.md",
+      "title": "Images and layers",
+      "summary": "Recipes, not cakes",
+      "minutes": 5,
+      "hue": 205
+    },
+    {
+      "slug": "under-the-hood",
+      "file": "under-the-hood.md",
+      "title": "How Linux does it",
+      "summary": "Namespaces, cgroups, overlays",
+      "minutes": 6,
+      "hue": 165
+    },
+    {
+      "slug": "ports-and-networks",
+      "file": "ports-and-networks.md",
+      "title": "Ports and networks",
+      "summary": "Letting the world in",
+      "minutes": 4,
+      "hue": 30
+    },
+    {
+      "slug": "keeping-data",
+      "file": "keeping-data.md",
+      "title": "Keeping your data",
+      "summary": "Volumes and bind mounts",
+      "minutes": 4,
+      "hue": 330
+    },
+    {
+      "slug": "compose",
+      "file": "compose.md",
+      "title": "Compose",
+      "summary": "One file, many containers",
+      "minutes": 5,
+      "hue": 280
+    },
+    {
+      "slug": "raspberry-pi",
+      "file": "raspberry-pi.md",
+      "title": "On a Raspberry Pi",
+      "summary": "Small machine, real work",
+      "minutes": 3,
+      "hue": 345
+    },
+    {
+      "slug": "cheat-sheet",
+      "file": "cheat-sheet.md",
+      "title": "Cheat sheet",
+      "summary": "Everything on one page",
+      "minutes": 2,
+      "hue": 120
+    }
+  ],
+  "cheatsheet": {
+    "file": "cli-cheatsheet.md",
+    "title": "Cheat sheet",
+    "summary": "Command line, Claude Code and MCP on one page"
+  }
 }

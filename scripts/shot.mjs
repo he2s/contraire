@@ -1,6 +1,6 @@
 // Headless UI check over the Chrome DevTools protocol (no npm deps; Node >= 22).
 // Pages with a live SSE stream never go network-idle, so we wait wall-clock time instead.
-// usage: node scripts/shot.mjs <url> <out.png> [--dark] [--width=1280] [--height=900] [--wait=2500] [--eval=<js>]
+// usage: node scripts/shot.mjs <url> <out.png> [--dark] [--print] [--width=1280] [--height=900] [--wait=2500] [--eval=<js>]
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +9,7 @@ import { join } from "node:path";
 const [url, out, ...flags] = process.argv.slice(2);
 const opt = k => flags.find(f => f.startsWith(`--${k}=`))?.split("=").slice(1).join("=");
 const W = +(opt("width") || 1280), H = +(opt("height") || 900), wait = +(opt("wait") || 2500);
-const dark = flags.includes("--dark"), expr = opt("eval");
+const dark = flags.includes("--dark"), print = flags.includes("--print"), expr = opt("eval");
 const chrome = process.env.CHROME || "google-chrome";
 const profile = mkdtempSync(join(tmpdir(), "shot-"));
 const port = 9300 + Math.floor(Math.random() * 500);
@@ -34,7 +34,7 @@ try {
   };
   const send = (method, params = {}) => new Promise(r => { pending.set(++id, r); ws.send(JSON.stringify({ id, method, params })); });
   await send("Runtime.enable"); await send("Log.enable"); await send("Page.enable");
-  if (dark) await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
+  if (dark || print) await send("Emulation.setEmulatedMedia", { media: print ? "print" : "", features: dark ? [{ name: "prefers-color-scheme", value: "dark" }] : [] });
   await send("Emulation.setDeviceMetricsOverride", { width: W, height: H, deviceScaleFactor: 1, mobile: W < 600 });
   await send("Page.navigate", { url });
   await sleep(wait);

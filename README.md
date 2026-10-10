@@ -45,6 +45,8 @@ Every action is recorded in **Activity** under the token's name. Revoking a toke
 
 ## From your workstation: CLI and MCP for Claude Code
 
+All of it on one page: [**the cheat sheet**](docs/learn/cli-cheatsheet.md), also in the dashboard under **Cheat sheet**, with copy buttons and your own server address filled in.
+
 The same binary is also the client. Point it at the server with a token from the **Access** page:
 
 ```sh

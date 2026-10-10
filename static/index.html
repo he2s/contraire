@@ -365,6 +365,42 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .doc .next a:hover { color: var(--accent-ink); }
 .doc .next small { display: block; color: var(--accent-ink); font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
 
+/* cheat sheet */
+.sheet { columns: 3 400px; column-gap: 24px; }
+.sheetcard { break-inside: avoid; display: inline-block; width: 100%; margin: 0 0 24px; border: var(--rule) solid var(--line); background: var(--panel); }
+.sheetcard h2 { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 16px; border-bottom: var(--rule) solid var(--line); font-family: var(--display); font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+.sheetcard h2 .no { flex: none; display: grid; place-items: center; width: 30px; height: 30px; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.sbody { padding: 14px 16px 16px; font-size: 14px; line-height: 1.55; }
+.sbody > p { margin: 0 0 12px; color: var(--ink-2); }
+.sbody > ul:not(.cmds) { margin: 0 0 12px; padding-left: 18px; }
+.sbody code { font-family: var(--mono); font-size: .9em; background: var(--chip); padding: 0 4px; }
+.sbody aside { background: var(--panel-2); border: 1.5px solid var(--line); border-left: 6px solid var(--accent); padding: 8px 12px; margin: 0 0 12px; font-size: 13px; }
+.sbody table { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 13px; border: 1.5px solid var(--line); }
+.sbody th, .sbody td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.sbody th { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; background: var(--panel-2); border-bottom: 1.5px solid var(--line); }
+.sbody > :last-child { margin-bottom: 0; }
+.cmds { list-style: none; margin: 0 0 12px; padding: 0; background: var(--console); border: 1.5px solid var(--console); }
+.cmd { display: grid; grid-template-columns: minmax(0, 1fr) auto; border-top: 1px solid var(--console-line); color: var(--console-fg); }
+.cmd:first-child { border-top: 0; }
+.cmd:hover, .cmd:focus-within { background: var(--console-2); }
+.cmd code { grid-column: 1; padding: 9px 12px 1px; font-family: var(--mono); font-size: 12.5px; background: none; color: var(--console-fg); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmd .note { grid-column: 1; padding: 0 12px 9px; color: var(--console-dim); font-size: 12.5px; }
+.cmd code:last-of-type:not(:has(+ .note)) { padding-bottom: 9px; }
+.cmd button { grid-column: 2; grid-row: 1 / span 2; border: 0; border-left: 1px solid var(--console-line); background: transparent; color: var(--console-fg); font-weight: 700; font-size: 12px; padding: 0 14px; cursor: pointer; }
+.cmd button:hover, .cmd button:focus-visible { background: var(--accent); color: #fff; }
+.cs-host { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-left: var(--rule) solid var(--line); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.cs-host code { font-family: var(--mono); font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 600; }
+@media print {
+  :root:root:root { --bg: #fff; --side: #fff; --panel: #fff; --panel-2: #f4f4f4; --line: #000; --line-soft: #bbb; --text: #000; --ink-2: #111; --muted: #333; --chip: #eee;
+    --console: #fff; --console-2: #fff; --console-line: #bbb; --console-fg: #000; --console-dim: #444; --accent: #000; color-scheme: light; }
+  .side, .ph .tools, .cmd button, .toasts, .cs-host .ib, .mood .badge { display: none !important; }
+  .app { display: block; } main { padding: 0; gap: 12px; }
+  .ph h1 { font-size: 28px; }
+  .sheet { columns: 2; column-gap: 16px; }
+  .sheetcard { margin-bottom: 12px; }
+  .cmds { border-color: #000; }
+}
+
 /* modal + toast */
 .modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 30; background: rgba(17,17,17,.45); }
 .modal .box { background: var(--panel); border: var(--rule) solid var(--line); padding: 22px; width: min(460px, calc(100vw - 32px)); box-shadow: 12px 12px 0 rgba(17,17,17,.25); }
@@ -397,6 +433,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
       <a href="#images" data-nav="images"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
       <a href="#activity" data-nav="activity"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
       <a href="#learn" data-nav="learn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
+      <a href="#cheatsheet" data-nav="cheatsheet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
       <a href="#access" data-nav="access"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg><span>Access</span></a>
       <a href="#about" data-nav="about"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
     </div>
@@ -1262,6 +1299,7 @@ async function renderLearn(slug) {
     view.innerHTML = `<header class="ph"><div><div class="kick">${ch.length} lessons · loaded live from GitHub</div><h1>Learn Docker</h1></div></header>
       <div class="learn"><nav class="lnav" aria-label="Lessons">${ch.map((c, i) => `
         <a href="#learn/${esc(c.slug)}" data-learn="${esc(c.slug)}" style="--h:${c.hue ?? hue(c.slug)}"><span class="num">${i + 1}</span><span>${esc(c.title)}<small>${esc(c.minutes)} min · ${esc(c.summary)}</small></span></a>`).join("")}
+        <a href="#cheatsheet" style="grid-template-columns:28px 1fr;border-top:2px solid var(--line)"><span class="num" style="background:var(--accent);color:#fff">›_</span><span>Cheat sheet<small>Command line, Claude Code and MCP</small></span></a>
         <div class="src">Nothing here is stored on this machine. <a href="${esc(Lr.index.source || docsBase())}" target="_blank" rel="noopener">Edit on GitHub</a></div></nav>
         <article class="doc" id="doc"></article></div>`;
   }
@@ -1287,6 +1325,80 @@ async function openLesson(slug) {
     doc.querySelectorAll("img[data-src]").forEach(loadImage);
     window.scrollTo({ top: 0 });
   } catch (e) { doc.innerHTML = `<p class="muted">Couldn't load this lesson: ${esc(e.message)}</p>`; }
+}
+
+/* ---------- cheat sheet: Markdown from GitHub, laid out as command cards ---------- */
+async function docsIndex() {
+  if (!Lr.index) {
+    const r = await fetch(docsBase() + "index.json", { cache: "no-cache" });
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    Lr.index = await r.json();
+  }
+  return Lr.index;
+}
+
+/* `cmd   # note` lines become rows, each with its own Copy button. */
+function cmdList(lines) {
+  return `<ul class="cmds" role="list">${lines.filter(l => l.trim()).map(l => {
+    const m = l.match(/^(.*?)\s{2,}#\s?(.*)$/);
+    const cmd = (m ? m[1] : l).trim(), note = m ? m[2] : "";
+    return `<li class="cmd"><code>${esc(cmd)}</code>${note ? `<span class="note">${esc(note)}</span>` : ""}<button data-copy="${esc(cmd)}" aria-label="Copy: ${esc(cmd)}" title="Copy">Copy</button></li>`;
+  }).join("")}</ul>`;
+}
+
+function sheetSection(body) {
+  const blocks = [];
+  body = body.replace(/```(?:sh|bash|console)\n([\s\S]*?)```/g, (_, code) => { blocks.push(cmdList(code.split("\n"))); return `\n\nCMDBLOCK${blocks.length - 1}\n\n`; });
+  return md(body).replace(/<p>CMDBLOCK(\d+)<\/p>/g, (_, i) => blocks[+i]);
+}
+
+async function renderCheatsheet() {
+  if (!S.cfg) await refresh(false);
+  const view = $("#view");
+  const head = sub => `<header class="ph"><div><div class="kick">${sub}</div><h1>Cheat sheet</h1></div>
+    <div class="tools"><label class="field">${icon("search")}<span class="sr">Filter commands</span><input type="search" id="cs-q" placeholder="Filter: logs, restart, token…  ( / )"></label>
+      <button class="btn" id="cs-print">Print</button></div></header>`;
+  view.innerHTML = head("loading from GitHub…") + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  let src;
+  try {
+    const idx = await docsIndex();
+    const r = await fetch(docsBase() + (idx.cheatsheet?.file || "cli-cheatsheet.md"), { cache: "no-cache" });
+    if (!r.ok) throw new Error(r.status + " " + r.statusText);
+    src = await r.text();
+  } catch (e) {
+    if (S.view !== "cheatsheet") return;
+    view.innerHTML = head("cheat sheet") + `<div class="card"><span class="muted">The cheat sheet lives on GitHub and couldn't be loaded (${esc(e.message)}). This device may be offline.</span></div>`;
+    return;
+  }
+  if (S.view !== "cheatsheet") return;
+  // Examples use a placeholder server; show the one this page is served from instead.
+  src = src.replaceAll("http://pi.local:8083", location.origin);
+  const [intro, ...secs] = src.split(/^## /m);
+  const lead = (intro.replace(/^# .*\n/, "").trim());
+  const file = Lr.index?.cheatsheet?.file || "cli-cheatsheet.md";
+  view.innerHTML = head(`command line · claude code · mcp`) + `
+    <section class="card mood"><span class="badge" aria-hidden="true">›_</span><div class="txt"><strong>${esc((intro.match(/^# (.*)/m)?.[1] || "").replace(/^cheat sheet:\s*/i, "") || "Everything on one page")}</strong>
+      <span class="muted">${esc(lead)}</span></div>
+      <span class="cs-host"><span class="muted">Your server</span><code>${esc(location.origin)}</code>${copyBtn(location.origin, "Copy server address")}</span></section>
+    <div class="sheet" id="sheet">${secs.map((sec, i) => {
+      const nl = sec.indexOf("\n"), title = sec.slice(0, nl).trim(), body = sec.slice(nl + 1);
+      return `<section class="sheetcard" aria-labelledby="cs-${i}"><h2 id="cs-${i}"><span class="no">${String(i + 1).padStart(2, "0")}</span>${esc(title)}</h2><div class="sbody">${sheetSection(body)}</div></section>`;
+    }).join("")}</div>
+    <p class="muted" style="font-size:12px">Loaded live from <a href="${esc((Lr.index?.source || "").replace(/\/?$/, "/") + file)}" target="_blank" rel="noopener">GitHub</a>; nothing here is stored on this machine. Commands use <code>$CONTRAIRE_TOKEN</code> so your token never appears on screen.</p>`;
+}
+
+function filterSheet(q) {
+  q = q.trim().toLowerCase();
+  document.querySelectorAll("#sheet .sheetcard").forEach(card => {
+    const title = card.querySelector("h2").textContent.toLowerCase();
+    let any = !q || title.includes(q);
+    card.querySelectorAll(".cmd, tbody tr, .sbody li:not(.cmd)").forEach(el => {
+      const hit = !q || title.includes(q) || el.textContent.toLowerCase().includes(q);
+      el.hidden = !hit; any = any || hit;
+    });
+    card.querySelectorAll(".sbody > p, .sbody > aside").forEach(el => { el.hidden = !!q && !title.includes(q) && !el.textContent.toLowerCase().includes(q); });
+    card.hidden = !any;
+  });
 }
 
 /* Images go through fetch + blob so SVGs render whatever content type the host serves. */
@@ -1368,7 +1480,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet"].includes(v) ? v : "containers";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
@@ -1377,6 +1489,7 @@ function route() {
   document.querySelectorAll("[data-nav]").forEach(a => a.setAttribute("aria-current", a.dataset.nav === (view === "container" ? "containers" : view) ? "page" : "false"));
   if (S.open !== wasOpen) connect();
   if (view === "learn") { Lr.slug = arg; return renderLearn(arg); }
+  if (view === "cheatsheet") return renderCheatsheet();
   render();
   if (view === "container") loadDetail();
   if (view === "activity" || view === "container") loadAudit();
@@ -1399,7 +1512,7 @@ function render(soft) {
     document.title = `${S.info.name} · ${S.cfg?.name || ""}`;
   }
   $("#h-disk").textContent = fmtBytes(S.images.reduce((a, i) => a + i.Size, 0));
-  if (S.view === "learn") return;
+  if (S.view === "learn" || S.view === "cheatsheet") return;
   const view = $("#view");
   if (S.view === "container" && soft && $("#c-head")) {
     const c = S.containers.find(x => x.Id === S.open);
@@ -1487,6 +1600,7 @@ document.addEventListener("click", async e => {
     try { await api(`/api/tokens/${rv.dataset.revoke}`, { method: "DELETE" }); toast(`${rv.dataset.name} revoked`); } catch (err) { toast(err.message, true); }
     return loadTokens();
   }
+  if (e.target.closest("#cs-print")) return window.print();
   if (e.target.closest("#pull")) return pullImage();
   if (e.target.closest("#prune")) return pruneImages();
   const row = e.target.closest("[data-href]");
@@ -1494,6 +1608,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("input", e => {
   if (e.target.id === "q") { S.q = e.target.value; if (S.view === "containers") $("#rows").innerHTML = rowsHtml(); else render(); }
+  if (e.target.id === "cs-q") filterSheet(e.target.value);
   if (e.target.id === "lq") {
     const q = e.target.value.toLowerCase();
     document.querySelectorAll("#d-logs .ln").forEach(l => { l.hidden = q && !l.textContent.toLowerCase().includes(q); });
@@ -1503,7 +1618,7 @@ document.addEventListener("change", e => { if (e.target.id === "d-tail") connect
 document.addEventListener("keydown", e => {
   if (!$("#modal").hidden) return;
   const tag = document.activeElement?.tagName;
-  if (e.key === "/" && !/INPUT|SELECT|TEXTAREA/.test(tag)) { const q = $("#q") || $("#lq"); if (q) { e.preventDefault(); q.focus(); } }
+  if (e.key === "/" && !/INPUT|SELECT|TEXTAREA/.test(tag)) { const q = $("#q") || $("#cs-q") || $("#lq"); if (q) { e.preventDefault(); q.focus(); } }
   if (e.key === "Escape") { if (S.view === "container") location.hash = "#containers"; else if (document.activeElement?.id === "q") { S.q = ""; render(); } }
   if (e.key === "Enter" && document.activeElement?.dataset?.href) location.hash = document.activeElement.dataset.href;
 });
