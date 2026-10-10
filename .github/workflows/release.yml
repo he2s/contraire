@@ -1,0 +1,29 @@
+# Push a tag like v0.1.0 to build every binary and publish a GitHub Release.
+# install.sh / install.ps1 download from the latest release and verify SHA256SUMS.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build all binaries (cargo-zigbuild cross-compile, see Dockerfile)
+        run: docker buildx build --target dist --output type=local,dest=dist .
+      - name: Enforce the 1 MB binary budget
+        run: |
+          for f in dist/contraire-*; do
+            s=$(stat -c %s "$f"); echo "$f: $((s / 1024)) KB"
+            [ "$s" -le 1048576 ] || { echo "::error::$f is over the 1 MB budget"; exit 1; }
+          done
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "contraire $GITHUB_REF_NAME" --generate-notes --verify-tag \
+          || gh release upload "$GITHUB_REF_NAME" dist/* --clobber

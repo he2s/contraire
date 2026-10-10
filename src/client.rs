@@ -9,6 +9,7 @@
 //! Every call goes through the server's API, so token scopes and the audit log apply.
 
 use std::io::{self, BufRead, Write};
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde_json::{Value, json};
@@ -16,7 +17,7 @@ use serde_json::{Value, json};
 use crate::docker::{Docker, Tick};
 
 pub const COMMANDS: &[&str] =
-    &["ps", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
+    &["init", "ps", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
 
 const HELP: &str = "\
 Client mode: control a contraire server from this machine.
@@ -24,6 +25,7 @@ Client mode: control a contraire server from this machine.
 Usage: contraire <COMMAND> [ARGS] [--host URL] [--token TOKEN] [--json]
 
 Commands:
+  init <dir>                 Create a session folder for Claude Code: skill, config, action log, journal
   ps                         List containers
   inspect <container>        State, health, exit reason, ports, mounts, compose info
   logs <container> [-n N] [-f] [-t]   Last N lines (default 100); -f follows live, -t shows timestamps
@@ -39,6 +41,10 @@ Options:
   --host <URL>    Server, e.g. http://pi.local:8083   [env: CONTRAIRE_HOST] [default: http://127.0.0.1:8083]
   --token <TOKEN> API token from the Access page      [env: CONTRAIRE_TOKEN]
   --json          Print the raw JSON instead of a table
+  --skill-from <PATH>   (init) copy the skill from a local file instead of GitHub
+
+Sessions: inside a folder made by `contraire init`, host and token come from .contraire/,
+and every command (and MCP tool call) is appended to .contraire/actions.log.
 
 Claude Code:
   claude mcp add contraire --env CONTRAIRE_TOKEN=ctr_... -- contraire mcp --host http://pi.local:8083
@@ -47,6 +53,8 @@ Claude Code:
 pub struct Remote {
     http: Docker,
     pub host: String,
+    /// Session action log (`.contraire/actions.log`), when run inside a session folder.
+    log: Option<PathBuf>,
 }
 
 impl Remote {
@@ -69,7 +77,18 @@ impl Remote {
         if let Some(t) = token.filter(|t| !t.is_empty()) {
             http = http.with_header("Authorization", &format!("Bearer {t}"));
         }
-        Ok(Remote { http, host: format!("http://{addr}") })
+        Ok(Remote { http, host: format!("http://{addr}"), log: None })
+    }
+
+    /// Append one line per command to the session log: time, result, read/change, command.
+    fn record(&self, what: &str, change: bool, result: &Result<String, String>) {
+        let Some(path) = &self.log else { return };
+        let (status, detail) = match result {
+            Ok(_) => ("ok  ", String::new()),
+            Err(e) => ("FAIL", format!("  -- {}", e.replace('\n', " "))),
+        };
+        let line = format!("{}  {status}  {}  {what}{detail}\n", rfc3339(now()), if change { "change" } else { "read  " });
+        let _ = std::fs::OpenOptions::new().create(true).append(true).open(path).and_then(|mut f| f.write_all(line.as_bytes()));
     }
 
     fn call(&self, method: &str, path: &str, body: Option<&Value>, timeout: u64) -> Result<Vec<u8>, String> {
@@ -374,8 +393,9 @@ fn stats_text(st: &Value) -> String {
 /* ---------- CLI ---------- */
 
 struct Args {
-    host: String,
+    host: Option<String>,
     token: Option<String>,
+    skill_from: Option<String>,
     json: bool,
     follow: bool,
     timestamps: bool,
@@ -386,8 +406,9 @@ struct Args {
 
 fn parse(args: &[String]) -> Result<Args, String> {
     let mut a = Args {
-        host: std::env::var("CONTRAIRE_HOST").unwrap_or_else(|_| "http://127.0.0.1:8083".into()),
-        token: std::env::var("CONTRAIRE_TOKEN").ok(),
+        host: None,
+        token: None,
+        skill_from: None,
         json: false,
         follow: false,
         timestamps: false,
@@ -403,7 +424,8 @@ fn parse(args: &[String]) -> Result<Args, String> {
         };
         let mut val = |name: &str| inline.clone().or_else(|| it.next().cloned()).ok_or_else(|| format!("{name} needs a value"));
         match flag {
-            "--host" | "-H" => a.host = val("--host")?,
+            "--host" | "-H" => a.host = Some(val("--host")?),
+            "--skill-from" => a.skill_from = Some(val("--skill-from")?),
             "--token" => a.token = Some(val("--token")?),
             "--json" => a.json = true,
             "-f" | "--follow" => a.follow = true,
@@ -431,18 +453,47 @@ pub fn run(args: &[String]) -> i32 {
         print!("{HELP}");
         return 0;
     }
-    let remote = match Remote::connect(&a.host, a.token.as_deref()) {
+    let cmd = a.pos.first().map(String::as_str).unwrap_or("");
+    // Precedence: flag > environment > session folder > default.
+    let session = find_session();
+    let host = a
+        .host
+        .clone()
+        .or_else(|| std::env::var("CONTRAIRE_HOST").ok().filter(|h| !h.is_empty()))
+        .or_else(|| session.as_ref().and_then(|s| s.host.clone()))
+        .unwrap_or_else(|| "http://127.0.0.1:8083".into());
+    let token = a
+        .token
+        .clone()
+        .or_else(|| std::env::var("CONTRAIRE_TOKEN").ok().filter(|t| !t.is_empty()))
+        .or_else(|| session.as_ref().and_then(Session::token));
+    if cmd == "init" {
+        return match init(&a, &host, token.as_deref()) {
+            Ok(text) => {
+                print!("{text}");
+                0
+            }
+            Err(e) => {
+                eprintln!("contraire: {e}");
+                1
+            }
+        };
+    }
+    let mut remote = match Remote::connect(&host, token.as_deref()) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("contraire: {e}");
             return 2;
         }
     };
-    let cmd = a.pos.first().map(String::as_str).unwrap_or("");
+    remote.log = session.map(|s| s.log);
     if cmd == "mcp" {
         return mcp(&remote);
     }
-    match cli(&remote, cmd, &a) {
+    let result = cli(&remote, cmd, &a);
+    let change = matches!(cmd, "start" | "stop" | "restart" | "pause" | "unpause" | "stack");
+    remote.record(&format!("contraire {}", a.pos.join(" ")), change, &result);
+    match result {
         Ok(text) => {
             print!("{text}");
             0
@@ -452,6 +503,137 @@ pub fn run(args: &[String]) -> i32 {
             1
         }
     }
+}
+
+/* ---------- sessions: `contraire init` ---------- */
+
+const SKILL_URL: &str = "https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/SKILL.md";
+
+struct Session {
+    dir: PathBuf,
+    host: Option<String>,
+    log: PathBuf,
+}
+
+impl Session {
+    fn token(&self) -> Option<String> {
+        std::fs::read_to_string(self.dir.join("token")).ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty())
+    }
+}
+
+/// The nearest `.contraire/session.json` in this directory or a parent.
+fn find_session() -> Option<Session> {
+    let mut dir = std::env::current_dir().ok()?;
+    loop {
+        let cfg = dir.join(".contraire/session.json");
+        if let Ok(text) = std::fs::read_to_string(&cfg) {
+            let v: Value = serde_json::from_str(&text).ok()?;
+            let base = dir.join(".contraire");
+            let log = base.join(v.get("log").and_then(Value::as_str).unwrap_or("actions.log"));
+            return Some(Session { host: v.get("host").and_then(Value::as_str).map(str::to_string), log, dir: base });
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
+}
+
+fn write(path: &Path, text: &str) -> Result<(), String> {
+    std::fs::write(path, text).map_err(|e| format!("cannot write {}: {e}", path.display()))
+}
+
+fn init(a: &Args, host: &str, token: Option<&str>) -> Result<String, String> {
+    let dir = PathBuf::from(a.pos.get(1).ok_or("'init' needs a folder, e.g. contraire init ops-pi")?);
+    if dir.join(".contraire/session.json").exists() {
+        return Err(format!("{} is already a contraire session", dir.display()));
+    }
+    let remote = Remote::connect(host, token)?;
+    let skill = match &a.skill_from {
+        Some(p) => std::fs::read_to_string(p).map_err(|e| format!("cannot read {p}: {e}"))?,
+        // The skill lives on GitHub, not in the binary; the binary has no TLS, so ask curl.
+        None => std::process::Command::new("curl")
+            .args(["-fsSL", "--max-time", "20", SKILL_URL])
+            .output()
+            .ok()
+            .filter(|o| o.status.success() && o.stdout.starts_with(b"---"))
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .ok_or_else(|| format!("could not download the skill from {SKILL_URL} (curl missing or offline?); use --skill-from <SKILL.md>"))?,
+    };
+    for d in [".contraire", ".claude/skills/contraire"] {
+        std::fs::create_dir_all(dir.join(d)).map_err(|e| format!("cannot create {}: {e}", dir.join(d).display()))?;
+    }
+    write(&dir.join(".claude/skills/contraire/SKILL.md"), &skill)?;
+    write(&dir.join(".contraire/session.json"), &format!("{:#}\n", json!({ "host": remote.host, "log": "actions.log" })))?;
+    write(&dir.join(".gitignore"), "# The API token never goes into git.\n.contraire/token\n")?;
+    if let Some(t) = token {
+        let path = dir.join(".contraire/token");
+        let mut opts = std::fs::OpenOptions::new();
+        opts.write(true).create(true).truncate(true);
+        #[cfg(unix)]
+        std::os::unix::fs::OpenOptionsExt::mode(&mut opts, 0o600);
+        opts.open(&path).and_then(|mut f| f.write_all(t.as_bytes())).map_err(|e| format!("cannot write token: {e}"))?;
+    }
+    // Looking around needs no confirmation; changes still ask.
+    let reads = ["ps", "inspect", "logs", "stacks", "events", "info", "activity"];
+    let settings = json!({ "permissions": { "allow": reads.iter().map(|c| format!("Bash(contraire {c}:*)")).collect::<Vec<_>>() } });
+    write(&dir.join(".claude/settings.json"), &format!("{settings:#}\n"))?;
+
+    let info = remote.get("/api/info").ok();
+    let about = info.as_ref().map_or_else(
+        || "server not reachable yet".to_string(),
+        |i| format!("{}, Docker {}, {}", s(i, "/name"), s(i, "/version"), s(i, "/os")),
+    );
+    write(
+        &dir.join("CLAUDE.md"),
+        &format!(
+            "# Docker operations session\n\n\
+             This folder is a working session for the Docker host behind {host} ({about}), operated with the `contraire` CLI.\n\n\
+             - Use the **contraire** skill (`.claude/skills/contraire/`) for anything about containers, logs, stacks or recent changes.\n\
+             - Every `contraire` command run here is appended automatically to `.contraire/actions.log` (time, ok/FAIL, read/change, command). Don't edit it.\n\
+             - `SESSION.md` is the journal for humans. After each task, append a dated entry: what you checked, what you found (with evidence), \
+             what you changed, and what you recommend. Changes matter most.\n\
+             - The API token is in `.contraire/token`, which git ignores. Never print it or put it on a command line; the CLI reads it on its own.\n",
+            host = remote.host
+        ),
+    )?;
+    write(
+        &dir.join("SESSION.md"),
+        &format!(
+            "# Session journal\n\nHost: {} ({about})  \nStarted: {}  \nRaw command log: `.contraire/actions.log`\n",
+            remote.host,
+            rfc3339(now())
+        ),
+    )?;
+    let git = std::process::Command::new("git").args(["init", "-q"]).current_dir(&dir).status().is_ok_and(|s| s.success());
+    if git {
+        let _ = std::process::Command::new("git").args(["add", "-A"]).current_dir(&dir).status();
+    }
+    Ok(format!(
+        "Created session {dir}\n  host      {host} ({about})\n  token     {tok}\n  skill     .claude/skills/contraire/SKILL.md\n  log       .contraire/actions.log\n  journal   SESSION.md\n  git       {git}\n\nNext:\n  cd {dir} && claude\n",
+        dir = dir.display(),
+        host = remote.host,
+        tok = if token.is_some() { "saved in .contraire/token (git-ignored)" } else { "none: set CONTRAIRE_TOKEN, or add .contraire/token" },
+        git = if git { "initialised (files staged, not committed)" } else { "not available" },
+    ))
+}
+
+fn now() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// `2026-10-10T12:34:56Z` without a date library (days-to-civil, proleptic Gregorian).
+fn rfc3339(t: u64) -> String {
+    let (days, rem) = ((t / 86_400) as i64, t % 86_400);
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
 }
 
 fn cli(r: &Remote, cmd: &str, a: &Args) -> Result<String, String> {
@@ -672,7 +854,10 @@ fn rpc(r: &Remote, msg: &Value) -> Option<Value> {
             let name = msg.pointer("/params/name").and_then(Value::as_str).unwrap_or("");
             let args = msg.pointer("/params/arguments").cloned().unwrap_or(json!({}));
             // Tool failures are results the model should see, not protocol errors.
-            let (text, is_error) = match call_tool(r, name, &args) {
+            let result = call_tool(r, name, &args);
+            let change = matches!(name, "start_container" | "stop_container" | "restart_container" | "stack_action");
+            r.record(&format!("mcp {name} {args}"), change, &result);
+            let (text, is_error) = match result {
                 Ok(t) => (t, false),
                 Err(e) => (e, true),
             };
@@ -746,6 +931,13 @@ mod tests {
         let call = rpc(&r, &json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "list_containers", "arguments": {} } })).unwrap();
         assert_eq!(call["result"]["isError"], true);
         assert_eq!(rpc(&r, &json!({ "jsonrpc": "2.0", "id": 4, "method": "nope" })).unwrap()["error"]["code"], -32601);
+    }
+
+    #[test]
+    fn rfc3339_dates() {
+        assert_eq!(rfc3339(0), "1970-01-01T00:00:00Z");
+        assert_eq!(rfc3339(951_782_400), "2000-02-29T00:00:00Z");
+        assert_eq!(rfc3339(1_791_631_609), "2026-10-10T11:26:49Z");
     }
 
     #[test]

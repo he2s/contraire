@@ -2,9 +2,27 @@
 
 Everything the dashboard does, from a terminal on your own computer or through an AI agent. Same binary, same permissions, same audit log.
 
+## Install
+
+One file, no dependencies. It works as the dashboard on the Docker host and as the client on your laptop. The script checks the download's SHA-256 before installing.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/he2s/contraire/main/install.sh | sh   # Linux & Raspberry Pi: installs to ~/.local/bin
+```
+
+```powershell
+irm https://raw.githubusercontent.com/he2s/contraire/main/install.ps1 | iex       # Windows PowerShell
+```
+
+```cmd
+curl.exe -fsSLO https://raw.githubusercontent.com/he2s/contraire/main/install.cmd && install.cmd
+```
+
+> Step by step for each machine, including starting at boot: the **Install and run** lesson in Learn.
+
 ## Set up once
 
-Download the binary for your computer, then tell it where the server is and which token to use. Create the token on the **Access** page.
+Tell the client where the server is and which token to use. Create the token on the **Access** page.
 
 ```sh
 export CONTRAIRE_HOST=http://pi.local:8083           # where the dashboard runs

@@ -10,6 +10,17 @@
 - **Copy buttons** for every command, ID and code sample.
 - **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
 
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/he2s/contraire/main/install.sh | sh     # Linux and Raspberry Pi
+```
+```powershell
+irm https://raw.githubusercontent.com/he2s/contraire/main/install.ps1 | iex         # Windows
+```
+
+Both scripts download the latest [release](https://github.com/he2s/contraire/releases) and verify its SHA-256 before installing. Step by step for each machine, including starting at boot: [Install and run](docs/learn/install-and-run.md).
+
 ## Run it
 
 **Binary** (Linux amd64/arm64/armv7, Windows amd64):

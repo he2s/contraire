@@ -1348,7 +1348,7 @@ function cmdList(lines) {
 
 function sheetSection(body) {
   const blocks = [];
-  body = body.replace(/```(?:sh|bash|console)\n([\s\S]*?)```/g, (_, code) => { blocks.push(cmdList(code.split("\n"))); return `\n\nCMDBLOCK${blocks.length - 1}\n\n`; });
+  body = body.replace(/```(?:sh|bash|console|powershell|ps1|cmd|bat)\n([\s\S]*?)```/g, (_, code) => { blocks.push(cmdList(code.split("\n"))); return `\n\nCMDBLOCK${blocks.length - 1}\n\n`; });
   return md(body).replace(/<p>CMDBLOCK(\d+)<\/p>/g, (_, i) => blocks[+i]);
 }
 

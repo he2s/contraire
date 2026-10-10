@@ -3,6 +3,14 @@
   "source": "https://github.com/he2s/contraire/tree/main/docs/learn",
   "chapters": [
     {
+      "slug": "install-and-run",
+      "file": "install-and-run.md",
+      "title": "Install and run",
+      "summary": "Pi, Linux, Windows, Docker",
+      "minutes": 3,
+      "hue": 10
+    },
+    {
       "slug": "what-is-a-container",
       "file": "what-is-a-container.md",
       "title": "What is a container?",

@@ -1,0 +1,8 @@
+{
+  "skill_name": "contraire",
+  "evals": [
+    { "id": 1, "prompt": "Something's off on my Pi, a few services keep falling over. Can you figure out what's going on and tell me?", "expected_output": "Read-only triage: lists the containers needing attention with cause and evidence (exit codes, decisive log lines, events), suggests next steps, changes nothing.", "files": [] },
+    { "id": 2, "prompt": "flagd keeps restarting. why?", "expected_output": "Focused diagnosis of flagd: restart loop evidence from events/inspect, the decisive log line, the likely cause, a suggested fix; no restarts performed.", "files": [] },
+    { "id": 3, "prompt": "I just pushed a new config for demo-web. Restart it and make sure it comes back healthy.", "expected_output": "Records state before, restarts exactly demo-web, polls until healthy, checks logs for errors, reports before/after.", "files": [] }
+  ]
+}
