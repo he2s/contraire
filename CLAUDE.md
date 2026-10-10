@@ -94,7 +94,7 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
 - **`src/live.rs`:** one SSE stream per browser tab (`/api/stream?c=<id>`).
   - Each Docker stream gets one small relay thread: events, plus stats and logs for the open container.
   - Relays feed a bounded `sync_channel`, and the connection thread batches what arrives into single writes.
-  - Shutdown is an `AtomicBool` that relays check on every idle tick (15 s), so threads outlive a disconnected client by at most that long.
+  - The connection thread peeks the socket every 2 s to notice a closed tab (heartbeat every 15 s). Shutdown is an `AtomicBool` that relays check after each read (5 s timeout), so threads outlive a closed tab by about 7 s.
   - One stream per tab, not one per data source, because browsers allow only about 6 HTTP/1.1 connections per host.
 - **`src/compose.rs`:** project-level start/stop/restart, using compose labels only (no compose CLI).
   - The order comes from `com.docker.compose.depends_on`: dependencies start first and stop last.
