@@ -16,9 +16,12 @@ pub enum Endpoint {
     Pipe(String),
 }
 
+/// Also used in client mode to talk to a remote contraire server over `tcp://`.
 #[derive(Clone)]
 pub struct Docker {
     endpoint: Endpoint,
+    /// Extra request header lines (each ending in CRLF), e.g. `Authorization`.
+    headers: String,
 }
 
 pub struct Reply {
@@ -71,7 +74,12 @@ impl Docker {
             None if host.starts_with(r"\\") => Endpoint::Pipe(host.to_string()),
             _ => return Err(format!("unsupported docker host '{host}'")),
         };
-        Ok(Docker { endpoint })
+        Ok(Docker { endpoint, headers: String::new() })
+    }
+
+    pub fn with_header(mut self, name: &str, value: &str) -> Self {
+        self.headers.push_str(&format!("{name}: {value}\r\n"));
+        self
     }
 
     pub fn describe(&self) -> String {
@@ -100,8 +108,9 @@ impl Docker {
         let mut c = self.connect(timeout)?;
         let head = format!(
             "{method} {path} HTTP/1.1\r\nHost: docker\r\nConnection: close\r\n\
-             Content-Type: application/json\r\nContent-Length: {}\r\n\r\n",
-            body.len()
+             Content-Type: application/json\r\nContent-Length: {}\r\n{}\r\n",
+            body.len(),
+            self.headers
         );
         c.write_all(head.as_bytes())?;
         c.write_all(body)?;

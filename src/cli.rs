@@ -119,6 +119,12 @@ fn help() -> String {
             s.push_str(&format!("  {:<32}{}\n", "", extra.trim_end()));
         }
     }
+    s.push_str(
+        "\nClient mode (run on your workstation against a server):\n  \
+         contraire ps | inspect | logs | start | stop | restart | stacks | stack | events | activity | info\n  \
+         contraire mcp        MCP server on stdio for Claude Code and other agents\n  \
+         contraire ps --help  details\n",
+    );
     s
 }
 

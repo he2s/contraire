@@ -43,6 +43,29 @@ curl -X POST -H "Authorization: Bearer $CONTRAIRE_TOKEN" http://pi.local:8083/ap
 
 Every action is recorded in **Activity** under the token's name. Revoking a token takes effect immediately.
 
+## From your workstation: CLI and MCP for Claude Code
+
+The same binary is also the client. Point it at the server with a token from the **Access** page:
+
+```sh
+export CONTRAIRE_HOST=http://pi.local:8083 CONTRAIRE_TOKEN=ctr_...
+contraire ps                      # all containers, plain-language status
+contraire inspect web             # health streak, exit code explained, ports, mounts, compose info
+contraire logs web -f             # follow live
+contraire restart web
+contraire stacks                  # compose stacks and what needs attention
+contraire events --since 30       # starts, stops with exit codes, OOM kills, health changes
+contraire ps --help               # everything else (add --json for raw output)
+```
+
+**Claude Code:** register the built-in MCP server. Use an `operate` token, so the agent can restart things but never delete them:
+
+```sh
+claude mcp add contraire --env CONTRAIRE_TOKEN=ctr_... -- contraire mcp --host http://pi.local:8083
+```
+
+Claude then gets 12 tools: `list_containers`, `inspect_container`, `container_logs` (with grep), `container_stats`, `list_stacks`, `recent_events`, `activity`, `host_info`, `start_container`, `restart_container`, `stop_container` and `stack_action`. Each change it makes appears in **Activity** under the token's name. The binary has no TLS, so for a Pi outside your LAN use an SSH tunnel (`ssh -L 8083:localhost:8083 pi`) or a VPN.
+
 ## Options
 
 | Flag | Environment | Default |

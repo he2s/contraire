@@ -112,6 +112,12 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - The token table sits behind an `RwLock<Arc<Vec<Token>>>`. This is the one deliberate lock in the server: it is read on every request but written only on create or revoke. `last_used` is a per-token atomic.
   - Tokens require the audit log's state directory; with `--audit-file off`, tokens are off too.
 - **`src/cli.rs`:** argument parsing (see above).
+- **`src/client.rs`:** client mode. When the first argument is a command (`ps`, `logs`, `mcp`, …), `main` hands off here and the server code never runs.
+  - It talks to a server's HTTP API, reusing `docker.rs`'s HTTP client over `tcp://` with extra headers (`Bearer` token, `X-Contraire`).
+  - `contraire mcp` is an MCP server: JSON-RPC 2.0, one message per line on stdio. Logs go to stderr only, because stdout carries the protocol.
+  - Tool failures are returned as `isError` results, not protocol errors, so the model can read them.
+  - The tool set deliberately has no remove, prune or pull. Server-side token scopes still apply.
+  - Text formatting is shared between the CLI and the MCP tools: compact and plain language, including exit-code hints.
 - **`src/main.rs`:** holds `App`: the auth check, the CSRF check, and routing by `match` on `(method, path segments)`.
   - Most routes are thin proxies to the Docker API.
   - `/api/info` and the stats routes slim Docker's large payloads down server-side (`live::summarize_stats`).

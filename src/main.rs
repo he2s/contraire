@@ -2,6 +2,7 @@
 mod bench;
 mod audit;
 mod cli;
+mod client;
 mod compose;
 mod docker;
 mod http;
@@ -40,6 +41,11 @@ struct App {
 }
 
 fn main() {
+    // One binary, two roles: `contraire` serves; `contraire <command>` is the client.
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().is_some_and(|a| client::COMMANDS.contains(&a.as_str())) {
+        std::process::exit(client::run(&args));
+    }
     let cfg = match cli::parse(std::env::args_os(), |k| std::env::var(k).ok()) {
         Ok(cli::Cli::Run(cfg)) => cfg,
         Ok(cli::Cli::Done) => return,
