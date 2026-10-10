@@ -7,8 +7,10 @@ mod compose;
 mod docker;
 mod http;
 mod live;
+mod metrics;
 mod tokens;
 
+use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -33,6 +35,7 @@ struct App {
     /// The Basic-auth user, when a password is configured.
     user: Option<String>,
     tokens: tokens::Store,
+    metrics: Arc<metrics::Store>,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
@@ -79,6 +82,7 @@ fn main() {
         audit,
         user: cfg.password.is_some().then(|| cfg.user.clone()),
         tokens: token_store,
+        metrics: metrics::start("/sys/fs/cgroup"),
         listen: cfg.listen.clone(),
         started: std::time::Instant::now(),
         started_unix: unix_now(),
@@ -90,6 +94,9 @@ fn main() {
     match app.audit.path() {
         Some(p) => eprintln!("contraire: audit log: {}", p.display()),
         None => eprintln!("contraire: audit log: off (API tokens need it too)"),
+    }
+    if !app.metrics.available() {
+        eprintln!("contraire: metrics: no container cgroups found under /sys/fs/cgroup (host metrics only)");
     }
     if let Some(p) = app.tokens.path() {
         eprintln!("contraire: API tokens: {} ({} defined)", p.display(), app.tokens.len());
@@ -126,7 +133,7 @@ impl Drop for Slot {
     }
 }
 
-fn unix_now() -> u64 {
+pub fn unix_now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
@@ -335,6 +342,9 @@ impl App {
                 Ok(false) => Response::error(404, "no such token"),
                 Err(e) => Response::error(500, &e),
             },
+            ("GET", ["api", "metrics"]) => self.metrics_overview(req),
+            ("GET", ["api", "metrics", id]) if valid_id(id) => self.metrics_container(req, id)?,
+            ("GET", ["metrics"]) => self.prometheus()?,
             ("GET", ["api", "self"]) => Response::json(200, self.telemetry().to_string()).with_header("Cache-Control", "no-store"),
             ("GET", ["api", "events"]) => {
                 // Recent history for the events panel; the live tail comes over /api/stream.
@@ -409,6 +419,11 @@ impl App {
             "auth": self.auth.is_some(),
             "audit": self.audit.path().map(|p| p.display().to_string()),
             "tokens": self.tokens.path().map(|_| self.tokens.len()),
+            "metrics": {
+                "available": self.metrics.available(),
+                "samples": self.metrics.samples(),
+                "last_pass_ms": self.metrics.last_pass_ns.load(Ordering::Relaxed) as f64 / 1e6,
+            },
             "started": self.started_unix,
             "uptime": self.started.elapsed().as_secs(),
             "cpu_seconds": proc_cpu_seconds(),
@@ -440,6 +455,126 @@ impl App {
             }
             Err(e) => Response::error(409, &e),
         }
+    }
+
+    fn metrics_overview(&self, req: &Request) -> Response {
+        let spark = req.param("spark").and_then(|n| n.parse().ok()).unwrap_or(30).min(metrics::FINE - 1);
+        let mut containers = serde_json::Map::new();
+        for (key, v, cpu, mem) in self.metrics.latest(unix_now(), spark) {
+            let mut o = serde_json::Map::new();
+            for (name, x) in metrics::FIELDS.iter().zip(v) {
+                o.insert((*name).into(), json!(x));
+            }
+            o.insert("spark_cpu".into(), json!(cpu));
+            o.insert("spark_mem".into(), json!(mem));
+            containers.insert(format!("{key:016x}"), Value::Object(o));
+        }
+        let host = self.metrics.host(false, spark);
+        let latest = self.metrics.host_latest().map(|v| {
+            metrics::HOST_FIELDS.iter().zip(v).map(|(k, x)| ((*k).to_string(), json!(x))).collect::<serde_json::Map<_, _>>()
+        });
+        let body = json!({
+            "interval": metrics::INTERVAL,
+            "available": self.metrics.available(),
+            "host": { "latest": latest, "spark_cpu": host[0], "spark_mem": host[1] },
+            "containers": containers,
+        });
+        Response::json(200, body.to_string()).with_header("Cache-Control", "no-store")
+    }
+
+    fn metrics_container(&self, req: &Request, id: &str) -> std::io::Result<Response> {
+        let coarse = req.param("range") == Some("24h");
+        // Names and short IDs resolve to the full ID through Docker (cheap, one call).
+        let full = if id.len() == 64 {
+            id.to_string()
+        } else {
+            let r = self.docker.get(&format!("/containers/{id}/json"))?;
+            serde_json::from_slice::<Value>(&r.body).ok().and_then(|v| v["Id"].as_str().map(str::to_string)).unwrap_or_default()
+        };
+        let n = if coarse { metrics::COARSE } else { metrics::FINE };
+        let Some(series) = self.metrics.container(&full, coarse, n) else {
+            return Ok(Response::error(404, "no metrics for this container yet"));
+        };
+        let fields: serde_json::Map<String, Value> =
+            metrics::FIELDS.iter().zip(series).map(|(k, v)| ((*k).to_string(), json!(v))).collect();
+        let body = json!({ "interval": if coarse { 60 } else { metrics::INTERVAL }, "fields": fields });
+        Ok(Response::json(200, body.to_string()).with_header("Cache-Control", "no-store"))
+    }
+
+    /// Prometheus text exposition: containers (labelled by name, stack, service), host, self.
+    fn prometheus(&self) -> std::io::Result<Response> {
+        use std::fmt::Write as _;
+        let list: Vec<Value> = serde_json::from_slice(&self.docker.get("/containers/json?all=1")?.body).unwrap_or_default();
+        let esc = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
+        let labels: HashMap<u64, String> = list
+            .iter()
+            .filter_map(|c| {
+                let id = c["Id"].as_str()?;
+                let l = &c["Labels"];
+                let name = c["Names"][0].as_str().unwrap_or("").trim_start_matches('/');
+                Some((
+                    metrics::key_of(id)?,
+                    format!(
+                        "name=\"{}\",id=\"{}\",stack=\"{}\",service=\"{}\"",
+                        esc(name),
+                        &id[..12],
+                        esc(l["com.docker.compose.project"].as_str().unwrap_or("")),
+                        esc(l["com.docker.compose.service"].as_str().unwrap_or(""))
+                    ),
+                ))
+            })
+            .collect();
+        let latest = self.metrics.latest(unix_now(), 0);
+        let mut out = String::with_capacity(16 * 1024);
+        let defs = [
+            ("cpu_percent", "CPU use in percent of one core"),
+            ("memory_bytes", "Memory in use, excluding reclaimable page cache"),
+            ("network_receive_bytes_per_second", "Network receive rate"),
+            ("network_transmit_bytes_per_second", "Network transmit rate"),
+            ("io_read_bytes_per_second", "Block IO read rate"),
+            ("io_write_bytes_per_second", "Block IO write rate"),
+            ("pids", "Processes and threads"),
+        ];
+        for (i, (name, help)) in defs.iter().enumerate() {
+            let _ = writeln!(out, "# HELP contraire_container_{name} {help}\n# TYPE contraire_container_{name} gauge");
+            for (key, v, ..) in &latest {
+                if let Some(l) = labels.get(key) {
+                    let _ = writeln!(out, "contraire_container_{name}{{{l}}} {}", v[i]);
+                }
+            }
+        }
+        let _ = writeln!(out, "# HELP contraire_container_running 1 if the container is running\n# TYPE contraire_container_running gauge");
+        let _ = writeln!(out, "# HELP contraire_container_healthy 1 healthy, 0 unhealthy (only containers with a health check)\n# TYPE contraire_container_healthy gauge");
+        for c in &list {
+            let Some(l) = c["Id"].as_str().and_then(metrics::key_of).and_then(|k| labels.get(&k)) else { continue };
+            let _ = writeln!(out, "contraire_container_running{{{l}}} {}", u8::from(c["State"] == "running"));
+            let status = c["Status"].as_str().unwrap_or("");
+            if status.contains("(healthy)") || status.contains("(unhealthy)") {
+                let _ = writeln!(out, "contraire_container_healthy{{{l}}} {}", u8::from(status.contains("(healthy)")));
+            }
+        }
+        if let Some(h) = self.metrics.host_latest() {
+            for (i, name, help) in [
+                (0, "cpu_percent", "Host CPU use in percent of all cores"),
+                (1, "memory_used_bytes", "Host memory in use"),
+                (5, "memory_total_bytes", "Host memory"),
+                (2, "load1", "1-minute load average"),
+                (3, "network_receive_bytes_per_second", "Host network receive rate"),
+                (4, "network_transmit_bytes_per_second", "Host network transmit rate"),
+            ] {
+                let _ = writeln!(out, "# HELP contraire_host_{name} {help}\n# TYPE contraire_host_{name} gauge\ncontraire_host_{name} {}", h[i]);
+            }
+        }
+        let rss = proc_status("VmRSS").unwrap_or(0) * 1024;
+        let _ = writeln!(
+            out,
+            "# HELP contraire_self_resident_bytes Memory of the dashboard itself\n# TYPE contraire_self_resident_bytes gauge\ncontraire_self_resident_bytes {rss}\n\
+             # HELP contraire_self_cpu_seconds_total CPU time of the dashboard itself\n# TYPE contraire_self_cpu_seconds_total counter\ncontraire_self_cpu_seconds_total {}\n\
+             # HELP contraire_self_requests_total HTTP requests served\n# TYPE contraire_self_requests_total counter\ncontraire_self_requests_total {}",
+            proc_cpu_seconds().unwrap_or(0.0),
+            self.requests.load(Ordering::Relaxed)
+        );
+        Ok(Response::new(200, "text/plain; version=0.0.4; charset=utf-8", out).with_header("Cache-Control", "no-store"))
     }
 
     fn proxy(&self, method: &str, path: &str) -> std::io::Result<Response> {

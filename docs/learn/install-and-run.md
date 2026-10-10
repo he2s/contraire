@@ -100,7 +100,7 @@ docker run -d --name contraire --restart unless-stopped -p 8083:8083 \
   contraire
 ```
 
-The image is built from the repository (`docker build -t contraire .`, about 1 MB). On Fedora and other SELinux systems, add `--security-opt label=disable`.
+To see per-container CPU and memory from inside a container, also add `--cgroupns=host --pid=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro`. Without them you only get host metrics. The image is built from the repository (`docker build -t contraire .`, about 1 MB). On Fedora and other SELinux systems, add `--security-opt label=disable`.
 
 ## Your laptop as the remote control
 

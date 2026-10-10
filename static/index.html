@@ -194,7 +194,11 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .chipf[aria-pressed="true"] .d { outline: 1.5px solid var(--invert-fg); }
 .table { background: var(--panel); border: var(--rule) solid var(--line); overflow: hidden; }
 .table .scroll { overflow-x: auto; }
-.tr { display: grid; grid-template-columns: minmax(260px, 2.6fr) 130px minmax(150px, 1.3fr) minmax(150px, 1.1fr) 140px; align-items: center; gap: 12px; padding: 8px 16px; min-height: 62px; border-top: 1px solid var(--line-soft); min-width: 860px; }
+.tr { display: grid; grid-template-columns: minmax(240px, 2.4fr) 130px 170px minmax(130px, 1.1fr) minmax(140px, 1fr) 140px; align-items: center; gap: 12px; padding: 8px 16px; min-height: 62px; border-top: 1px solid var(--line-soft); min-width: 1020px; }
+.use { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center; font-family: var(--mono); font-size: 11.5px; }
+.use .spark { height: 22px; margin: 0; grid-row: span 2; }
+.use b { font-weight: 600; text-align: right; }
+.use span { color: var(--muted); text-align: right; }
 .tr.th { min-height: 40px; background: var(--panel); border-top: 0; border-bottom: var(--rule) solid var(--line); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
 .tr.th + .tr { border-top: 0; }
 .tr.th span:last-child { text-align: right; }
@@ -659,6 +663,16 @@ function actionButtons(c, labelled) {
 /* ---------- views ---------- */
 const kicker = () => S.info ? `${esc(S.info.name)} · Docker Engine ${esc(S.info.version)}` : "connecting…";
 
+function hostUsageHtml() {
+  const h = S.metrics?.host;
+  if (!h?.latest) return `<div class="row"><span class="big">${S.info ? S.info.cpus + " CPU" : "–"}</span><span>${S.info ? fmtBytes(S.info.memory) + " RAM" : ""}</span></div>`;
+  const l = h.latest, memPct = l.mem_total ? l.mem / l.mem_total * 100 : 0;
+  return `<div class="row"><span class="big">${l.cpu.toFixed(0)}%</span><span>CPU · load ${l.load1.toFixed(2)}</span></div>
+    ${h.spark_cpu.length > 1 ? spark(h.spark_cpu, 26) : ""}
+    <div class="kv" style="font-size:12px"><span>Memory ${fmtBytes(l.mem)} of ${fmtBytes(l.mem_total)}</span><span>${memPct.toFixed(0)}%</span></div>
+    <div class="bar"><i style="width:${memPct.toFixed(1)}%"></i></div>`;
+}
+
 function viewContainers() {
   const cs = S.containers, sts = cs.map(status);
   const n = k => sts.filter(s => s.bucket === k).length;
@@ -697,8 +711,8 @@ function viewContainers() {
         <div class="row"><span class="big">${fmtBytes(imgBytes)}</span><span>on disk</span></div>
         <div class="foot2">${unused.length} unused · ${fmtBytes(unusedBytes)} reclaimable</div></div>
       <div class="card stat"><div class="top"><span>Host</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ok-fg)"><span class="dot pulse" style="width:8px;height:8px;background:var(--ok)"></span>live</span></div>
-        <div class="row"><span class="big">${S.info ? S.info.cpus + " CPU" : "–"}</span><span>${S.info ? fmtBytes(S.info.memory) + " RAM" : ""}</span></div>
-        <div class="foot2">${S.info ? `${esc(S.info.os)} · ${esc(S.info.arch)}<br>kernel ${esc(S.info.kernel)}` : ""}</div></div>
+        ${hostUsageHtml()}
+        <div class="foot2">${S.info ? `${S.info.cpus} CPU · ${fmtBytes(S.info.memory)} RAM · ${esc(S.info.arch)}<br>${esc(S.info.os)}` : ""}</div></div>
     </section>
     <section aria-label="Containers" style="display:flex;flex-direction:column;gap:14px">
       <div class="chips" role="group" aria-label="Filter">${chips.map(([k, l, d]) => `<button class="chipf" data-filter="${k}" aria-pressed="${S.filter === k}"><span class="d" style="background:${d}"></span>${l}<span class="n">${counts[k]}</span></button>`).join("")}</div>
@@ -715,18 +729,27 @@ function viewContainers() {
     </section>`;
 }
 
+/* Latest cgroup sample of a container, with a 5-minute CPU sparkline. */
+const metricsOf = c => S.metrics?.containers?.[c.Id.slice(0, 16)];
+function usageHtml(c) {
+  const m = metricsOf(c);
+  if (!m || c.State !== "running") return '<span class="muted" style="font-size:12px">–</span>';
+  return `<div class="use" title="CPU ${m.cpu.toFixed(1)}% of one core · memory ${fmtBytes(m.mem)} · last 5 minutes">${m.spark_cpu.length > 1 ? spark(m.spark_cpu, 22) : "<span></span>"}<b>${m.cpu.toFixed(1)}%</b><span>${fmtBytes(m.mem)}</span></div>`;
+}
+
 function rowsHtml() {
   const q = S.q.trim().toLowerCase();
   const list = S.containers.filter(c => (S.filter === "all" || status(c).bucket === S.filter) &&
     (!q || [cname(c), c.Image, c.Status, L(c, PROJ), L(c, "com.docker.compose.service"), ...(c.Ports || []).map(p => p.PublicPort)].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => (L(a, PROJ) || "~").localeCompare(L(b, PROJ) || "~") || cname(a).localeCompare(cname(b)));
-  const head = `<div class="tr th"><span>Name</span><span>Status</span><span>Ports</span><span>Up / since</span><span>Actions</span></div>`;
+  const head = `<div class="tr th"><span>Name</span><span>Status</span><span>CPU · Memory</span><span>Ports</span><span>Up / since</span><span>Actions</span></div>`;
   if (!list.length) return head + `<div class="empty">${BOAT(80)}<strong>Nothing on deck</strong><span class="muted" style="max-width:340px">${S.containers.length ? "No containers match this filter. Try another search." : "No containers yet."}</span></div>`;
   return head + list.map(c => {
     const st = status(c);
     return `<div class="tr" data-href="#c/${esc(c.Id)}" tabindex="0" title="${esc(cname(c))}">
       <div class="nm">${dotHtml(st)}<div><div class="t"><b>${displayName(c)}</b>${stackChip(c)}</div><span class="im">${imageHtml(c.Image)}</span></div></div>
       <span class="pill ${st.cls}">${st.label}</span>
+      ${usageHtml(c)}
       <div class="ports">${portHtml(c)}</div>
       <span class="muted" style="font-size:13px">${esc(c.Status.replace(HEALTH, "").trim())}</span>
       <div class="acts">${actionButtons(c)}</div></div>`;
@@ -771,8 +794,10 @@ function viewStacks() {
     <div class="stacks">
       <div class="stacklist">${ps.map(([p, pcs]) => {
         const u = pcs.filter(c => c.State === "running").length, bad = pcs.some(c => status(c).bucket === "attention");
+        const ms = pcs.map(metricsOf).filter(Boolean), cpu = ms.reduce((a, m) => a + m.cpu, 0), mem = ms.reduce((a, m) => a + m.mem, 0);
         return `<a class="scard" href="#stacks/${encodeURIComponent(p)}" aria-current="${p === name}" style="--h:${hue(p)}">
           <span class="h"><span class="sq" style="width:12px;height:12px;border-radius:4px"></span><b>${esc(p)}</b><span class="pill ${bad ? "s-bad" : u === pcs.length ? "s-ok" : "s-warn"}" style="height:22px">${u}/${pcs.length} up</span></span>
+          ${ms.length ? `<span class="mono" style="font-size:12px">CPU ${cpu.toFixed(1)}% · memory ${fmtBytes(mem)}</span>` : ""}
           <span class="svcs">${pcs.slice(0, 12).map(c => `<span class="svcdot"><i style="background:${status(c).dot}"></i>${esc(L(c, "com.docker.compose.service") || cname(c))}</span>`).join("")}${pcs.length > 12 ? `<span class="svcdot">+${pcs.length - 12}</span>` : ""}</span></a>`;
       }).join("")}</div>
       <section class="card sdetail" aria-label="Stack detail" style="--h:${hue(name)}">
@@ -993,7 +1018,11 @@ function viewContainer() {
           <div class="foot3"><span id="l-count">0 lines</span><span id="l-stream"></span></div>
         </div>
       </div>
-      <div id="tab-stats" ${S.tab === "stats" ? "" : "hidden"}><div class="grid wide" id="charts">${chartsHtml(S.hist[S.hist.length - 1] || null)}</div></div>
+      <div id="tab-stats" ${S.tab === "stats" ? "" : "hidden"} style="display:flex;flex-direction:column;gap:24px"><div class="grid wide" id="charts">${chartsHtml(S.hist[S.hist.length - 1] || null)}</div>
+        <section><div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap"><h2 style="margin:0;font-size:13px;letter-spacing:.1em;text-transform:uppercase">History</h2>
+          <div class="tabs" role="group" aria-label="History range"><button data-hist="1h" aria-selected="${S.histRange !== "24h"}">Last hour</button><button data-hist="24h" aria-selected="${S.histRange === "24h"}">Last 24 hours</button></div>
+          <span class="muted" style="font-size:12px">sampled from cgroups every 10 s (24 h: 1-minute averages)</span></div>
+          <div class="grid wide" id="history"><div class="card"><div class="skel" style="width:40%"></div></div></div></section></div>
       <div id="tab-details" ${S.tab === "details" ? "" : "hidden"} style="display:flex;flex-direction:column;gap:24px"><div class="card" id="d-info"><div class="skel" style="width:50%"></div></div>
         <div class="card"><h2>History through this dashboard</h2><div id="c-history" style="margin-top:6px">${historyHtml()}</div></div></div>
       <div id="tab-env" ${S.tab === "env" ? "" : "hidden"}><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2>Environment</h2><button class="btn sm" id="d-envbtn">Reveal</button></div><pre class="envlist muted" id="d-env">Hidden, because environment variables often contain passwords and API keys.</pre></div></div>
@@ -1037,6 +1066,20 @@ function spark(v, h = 90) {
   const ty = (h - avg / max * h).toFixed(1);
   return `<svg class="spark" viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" aria-hidden="true" style="height:${h}px">${bars}<line class="th" x1="0" x2="${W}" y1="${ty}" y2="${ty}"/></svg>`;
 }
+async function loadHistory() {
+  const id = S.open, el = $("#history");
+  if (!id || !el) return;
+  try {
+    const h = await api(`/api/metrics/${id}?range=${S.histRange || "1h"}`);
+    if (S.open !== id) return;
+    const f = h.fields, mins = n => `${Math.round(n * h.interval / 60)} min`;
+    const stat = (v, fmt) => v.length ? `<span class="muted" style="font-size:12px">now ${fmt(v[v.length - 1])} · peak ${fmt(Math.max(...v))} · avg ${fmt(v.reduce((a, b) => a + b, 0) / v.length)}</span>` : "";
+    const pct = x => x.toFixed(1) + "%", by = x => fmtBytes(x), bps = x => fmtBytes(x) + "/s";
+    const charts = [["CPU", f.cpu, pct], ["Memory", f.mem, by], ["Network in", f.rx, bps], ["Network out", f.tx, bps], ["Disk read", f.read, bps], ["Disk write", f.write, bps]];
+    el.innerHTML = charts.map(([t, v, fmt]) => `<figure class="card chart"><figcaption><span>${t}</span><span class="mono" style="font-size:12px">${mins(v.length)}</span></figcaption>${v.length > 1 ? spark(v, 70) : '<div class="muted" style="height:70px;display:grid;place-items:center">no data yet</div>'}${stat(v, fmt)}</figure>`).join("");
+  } catch (e) { el.innerHTML = `<div class="card"><span class="muted">${esc(e.message)}</span></div>`; }
+}
+
 function chartsHtml(s) {
   const H = S.hist;
   const series = k => H.map(x => x[k]).filter(x => x != null);
@@ -1560,9 +1603,11 @@ document.addEventListener("click", async e => {
     S.tab = tab.dataset.tab;
     document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", b === tab));
     for (const k of ["logs", "stats", "details", "env"]) $("#tab-" + k).hidden = k !== S.tab;
-    if (S.tab === "stats") $("#charts").innerHTML = chartsHtml(S.hist[S.hist.length - 1] || null);
+    if (S.tab === "stats") { $("#charts").innerHTML = chartsHtml(S.hist[S.hist.length - 1] || null); loadHistory(); }
     return;
   }
+  const hr = e.target.closest("[data-hist]");
+  if (hr) { S.histRange = hr.dataset.hist; document.querySelectorAll("[data-hist]").forEach(b => b.setAttribute("aria-selected", b === hr)); return loadHistory(); }
   const lvl = e.target.closest("[data-lvl]");
   if (lvl) {
     document.querySelectorAll("[data-lvl]").forEach(b => b.setAttribute("aria-pressed", b === lvl));
@@ -1649,6 +1694,17 @@ window.addEventListener("hashchange", route);
 })();
 /* Pushed events cover every change; this slow poll only refreshes texts like "Up 5 minutes". */
 setInterval(() => { if (!document.hidden) refresh(false); }, 15000);
+/* cgroup metrics refresh every 10 s on the server; follow along while visible. */
+async function loadMetrics() {
+  try {
+    S.metrics = await api("/api/metrics?spark=30");
+    if (S.view === "containers" && $("#rows") && document.activeElement?.id !== "q") render(true);
+    else if (S.view === "stacks") render(true);
+  } catch {}
+}
+loadMetrics();
+setInterval(() => { if (!document.hidden && /containers|stacks/.test(S.view)) loadMetrics(); }, 10000);
+setInterval(() => { if (!document.hidden && S.view === "container" && S.tab === "stats") loadHistory(); }, 30000);
 setInterval(() => { if (!document.hidden) loadSelf(); }, 3000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(false); });
 </script>

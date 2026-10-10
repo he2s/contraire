@@ -38,6 +38,7 @@ Start read-only. These are cheap and safe:
 
 ```sh
 contraire ps                         # everything, with plain-language status
+contraire top                        # CPU, memory, network, disk per container, busiest first
 contraire stacks                     # compose stacks and which services need attention
 contraire inspect <name>             # state, health streak, exit code explained, restarts, ports, mounts, depends_on
 contraire logs <name> -n 200         # recent output (stdout + stderr)
@@ -59,8 +60,9 @@ The status column already sorts problems for you: `unhealthy`, `failed (<code>)`
    contraire logs <name> -n 60          # then the last lines before the crash, unfiltered
    ```
    Use `-t` when timing matters, e.g. to line errors up with a restart from `events`. For a container in a restart loop, the cause is usually in the first lines after each start, not the last ones.
-4. `contraire events --since 60` shows whether it's a loop (repeated start/stop with the same exit code), an OOM kill, or a single crash.
-5. Report (format below). Suggest the fix; don't apply it unless asked.
+4. For resource problems (slow, OOM, exit 137), `contraire top` shows who is busy right now. The MCP tool `container_metrics` gives now, peak and average over 1 h or 24 h, plus the memory trend; a steady climb before an OOM points to a leak.
+5. `contraire events --since 60` shows whether it's a loop (repeated start/stop with the same exit code), an OOM kill, or a single crash.
+6. Report (format below). Suggest the fix; don't apply it unless asked.
 
 ## Workflow: change something
 

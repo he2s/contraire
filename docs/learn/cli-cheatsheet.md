@@ -37,6 +37,7 @@ contraire info                                         # check: host, Docker ver
 ```sh
 contraire ps                                           # every container, status in plain words
 contraire inspect web                                  # health, exit code explained, ports, mounts, compose deps
+contraire top                                          # CPU, memory, network and disk per container, busiest first
 contraire stacks                                       # compose stacks and which services need attention
 contraire events                                       # starts, stops, crashes and health changes, last hour
 contraire events --since 15                            # … only the last 15 minutes
@@ -86,7 +87,8 @@ Then just ask, in your own words:
 | `list_containers`, `list_stacks` | See everything, with plain-language status |
 | `inspect_container` | Health streak, exit code explained, ports, mounts |
 | `container_logs` | Last lines, optionally filtered by a word |
-| `container_stats`, `host_info` | CPU, memory, network, host facts |
+| `top_containers`, `container_metrics` | Resource use now, and now/peak/avg over 1 h or 24 h |
+| `container_stats`, `host_info` | Live CPU, memory, network, host facts |
 | `recent_events`, `activity` | What happened, and who changed what |
 | `start_container`, `restart_container`, `stop_container`, `stack_action` | Act (needs operate) |
 

@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use crate::docker::{Docker, Tick};
 
 pub const COMMANDS: &[&str] =
-    &["init", "ps", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
+    &["init", "ps", "top", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
 
 const HELP: &str = "\
 Client mode: control a contraire server from this machine.
@@ -27,6 +27,7 @@ Usage: contraire <COMMAND> [ARGS] [--host URL] [--token TOKEN] [--json]
 Commands:
   init <dir>                 Create a session folder for Claude Code: skill, config, action log, journal
   ps                         List containers
+  top                        CPU, memory, network and disk per container, busiest first
   inspect <container>        State, health, exit reason, ports, mounts, compose info
   logs <container> [-n N] [-f] [-t]   Last N lines (default 100); -f follows live, -t shows timestamps
   start|stop|restart|pause|unpause <container>
@@ -297,6 +298,77 @@ fn strip_timestamps(logs: &str) -> String {
         .join("\n")
 }
 
+fn mb(b: f64) -> String {
+    if b >= 1e9 { format!("{:.1} GB", b / 1e9) } else if b >= 1e6 { format!("{:.0} MB", b / 1e6) } else { format!("{:.0} KB", b / 1e3) }
+}
+
+fn rate_text(b: f64) -> String {
+    if b >= 1e6 { format!("{:.1} MB/s", b / 1e6) } else if b >= 1e3 { format!("{:.0} KB/s", b / 1e3) } else { format!("{b:.0} B/s") }
+}
+
+/// Containers by CPU, from the server's cgroup sampler (10 s resolution).
+fn top_text(list: &Value, m: &Value) -> String {
+    let mut rows: Vec<(f64, Vec<String>)> = list
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let x = &m["containers"][c["Id"].as_str()?.get(..16)?];
+            let f = |k: &str| x[k].as_f64().unwrap_or(0.0);
+            x.is_object().then(|| {
+                (f("cpu"), vec![name(c), format!("{:.1}%", f("cpu")), mb(f("mem")), rate_text(f("rx")), rate_text(f("tx")), rate_text(f("read") + f("write")), format!("{}", f("pids") as u64)])
+            })
+        })
+        .collect();
+    if rows.is_empty() {
+        return "No metrics yet (the server samples every 10 s; cgroup v2 required).\n".into();
+    }
+    rows.sort_by(|a, b| b.0.total_cmp(&a.0));
+    let mut t = vec![vec!["NAME".into(), "CPU".into(), "MEMORY".into(), "NET IN".into(), "NET OUT".into(), "DISK IO".into(), "PIDS".into()]];
+    t.extend(rows.into_iter().map(|r| r.1));
+    let h = &m["host"]["latest"];
+    format!(
+        "host: CPU {:.0}% · load {:.2} · memory {} of {}\n\n{}",
+        h["cpu"].as_f64().unwrap_or(0.0),
+        h["load1"].as_f64().unwrap_or(0.0),
+        mb(h["mem"].as_f64().unwrap_or(0.0)),
+        mb(h["mem_total"].as_f64().unwrap_or(0.0)),
+        table(&t)
+    )
+}
+
+/// Now / peak / average per field, plus the memory trend: what an agent needs, not 360 points.
+fn metrics_summary(name: &str, range: &str, h: &Value) -> String {
+    let f = &h["fields"];
+    let series = |k: &str| f[k].as_array().map(|a| a.iter().filter_map(Value::as_f64).collect::<Vec<_>>()).unwrap_or_default();
+    let cpu = series("cpu");
+    if cpu.is_empty() {
+        return format!("{name}: no samples in the last {range} (not running?)\n");
+    }
+    let line = |label: &str, v: &[f64], fmt: &dyn Fn(f64) -> String| {
+        let avg = v.iter().sum::<f64>() / v.len() as f64;
+        let peak = v.iter().cloned().fold(f64::MIN, f64::max);
+        format!("{label:<12}now {:<10} peak {:<10} avg {}\n", fmt(*v.last().unwrap_or(&0.0)), fmt(peak), fmt(avg))
+    };
+    let mem = series("mem");
+    let trend = match (mem.first(), mem.last()) {
+        (Some(a), Some(b)) if *a > 0.0 => format!("{:+.0}% over the window", (b - a) / a * 100.0),
+        _ => "-".into(),
+    };
+    let pct = |x: f64| format!("{x:.1}%");
+    let (by, rt) = (|x: f64| mb(x), |x: f64| rate_text(x));
+    format!(
+        "{name}, last {range} ({} samples)\n{}{}memory trend {trend}\n{}{}{}{}",
+        cpu.len(),
+        line("cpu", &cpu, &pct),
+        line("memory", &mem, &by),
+        line("net in", &series("rx"), &rt),
+        line("net out", &series("tx"), &rt),
+        line("disk read", &series("read"), &rt),
+        line("disk write", &series("write"), &rt),
+    )
+}
+
 fn stacks_text(list: &Value) -> String {
     let mut by: std::collections::BTreeMap<String, Vec<&Value>> = Default::default();
     for c in list.as_array().into_iter().flatten() {
@@ -450,7 +522,7 @@ pub fn run(args: &[String]) -> i32 {
         }
     };
     if a.pos.first().map(String::as_str) == Some("help") || a.pos.iter().any(|p| p == "help") {
-        print!("{HELP}");
+        out(HELP);
         return 0;
     }
     let cmd = a.pos.first().map(String::as_str).unwrap_or("");
@@ -470,7 +542,7 @@ pub fn run(args: &[String]) -> i32 {
     if cmd == "init" {
         return match init(&a, &host, token.as_deref()) {
             Ok(text) => {
-                print!("{text}");
+                out(&text);
                 0
             }
             Err(e) => {
@@ -495,7 +567,7 @@ pub fn run(args: &[String]) -> i32 {
     remote.record(&format!("contraire {}", a.pos.join(" ")), change, &result);
     match result {
         Ok(text) => {
-            print!("{text}");
+            out(&text);
             0
         }
         Err(e) => {
@@ -503,6 +575,11 @@ pub fn run(args: &[String]) -> i32 {
             1
         }
     }
+}
+
+/// Write to stdout, ignoring a closed pipe (`contraire ps | head` must not panic).
+fn out(text: &str) {
+    let _ = io::stdout().lock().write_all(text.as_bytes());
 }
 
 /* ---------- sessions: `contraire init` ---------- */
@@ -663,6 +740,10 @@ fn cli(r: &Remote, cmd: &str, a: &Args) -> Result<String, String> {
             r.post(&format!("/api/containers/{}/{cmd}", enc(&c)), None)?;
             Ok(format!("{c}: {cmd} done\n"))
         }
+        "top" => {
+            let (l, m) = (r.get("/api/containers")?, r.get("/api/metrics?spark=0")?);
+            if a.json { raw(m) } else { Ok(top_text(&l, &m)) }
+        }
         "stacks" => {
             let v = r.get("/api/containers")?;
             Ok(stacks_text(&v))
@@ -752,6 +833,15 @@ fn tools() -> Value {
         { "name": "container_stats", "title": "Container resource usage",
           "description": "Current CPU %, memory (and limit), network bytes and process count of a running container.",
           "inputSchema": c, "annotations": ro },
+        { "name": "top_containers", "title": "Resource use per container",
+          "description": "Current CPU (% of one core), memory, network and disk rates per container, busiest first, plus host CPU, load and memory. Sampled from cgroups every 10 s.",
+          "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
+        { "name": "container_metrics", "title": "Container resource history",
+          "description": "Now / peak / average CPU, memory, network and disk over the last hour (10 s samples) or 24 hours (1 min averages), plus the memory trend. Use it to spot leaks, spikes before a crash, or a noisy neighbour.",
+          "inputSchema": { "type": "object", "properties": {
+              "container": { "type": "string", "description": "Container name or ID" },
+              "range": { "type": "string", "enum": ["1h", "24h"], "description": "Default 1h" } }, "required": ["container"] },
+          "annotations": ro },
         { "name": "list_stacks", "title": "List compose stacks",
           "description": "Docker Compose projects on the host: how many services are up and which need attention.",
           "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
@@ -798,6 +888,12 @@ fn call_tool(r: &Remote, name: &str, args: &Value) -> Result<String, String> {
         }
         "container_stats" => r.get(&format!("/api/containers/{}/stats", enc(&str_arg("container")?))).map(|v| stats_text(&v)),
         "list_stacks" => r.get("/api/containers").map(|v| stacks_text(&v)),
+        "top_containers" => Ok(top_text(&r.get("/api/containers")?, &r.get("/api/metrics?spark=0")?)),
+        "container_metrics" => {
+            let c = str_arg("container")?;
+            let range = if args.get("range").and_then(Value::as_str) == Some("24h") { "24h" } else { "1h" };
+            r.get(&format!("/api/metrics/{}?range={range}", enc(&c))).map(|h| metrics_summary(&c, range, &h))
+        }
         "recent_events" => r.get_text(&format!("/api/events?since={}", int_arg("minutes", 60, 1440) * 60)).map(|t| events_text(&t)),
         "activity" => r.get(&format!("/api/audit?limit={}", int_arg("limit", 30, 500))).map(|v| activity_text(&v)),
         "host_info" => Ok(info_text(&r.get("/api/info")?, &r.get("/api/self")?)),
@@ -926,7 +1022,7 @@ mod tests {
         assert_eq!(init["result"]["protocolVersion"], "2025-03-26");
         assert!(rpc(&r, &json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).is_none());
         let list = rpc(&r, &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" })).unwrap();
-        assert!(list["result"]["tools"].as_array().unwrap().len() >= 10);
+        assert!(list["result"]["tools"].as_array().unwrap().len() >= 14);
         // Unreachable server: a tool error result, not a protocol error.
         let call = rpc(&r, &json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "list_containers", "arguments": {} } })).unwrap();
         assert_eq!(call["result"]["isError"], true);

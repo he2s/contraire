@@ -111,6 +111,12 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Scopes are `read` < `operate` < `admin`, mapped from method and path by `required_scope` in `main.rs`.
   - The token table sits behind an `RwLock<Arc<Vec<Token>>>`. This is the one deliberate lock in the server: it is read on every request but written only on create or revoke. `last_used` is a per-token atomic.
   - Tokens require the audit log's state directory; with `--audit-file off`, tokens are off too.
+- **`src/metrics.rs`:** one sampler thread reads cgroup v2 files for every container, plus `/proc` for the host, every 10 s.
+  - It never calls the Docker API, which costs about 1 s of daemon time per container.
+  - History lives in rings of `AtomicU32` (f32 bits): 1 h at 10 s and 24 h at 1-minute averages, about 50 KB per container, allocated on first sight.
+  - One writer, lock-free readers. Slots outlive their container and are reused least-recently-seen.
+  - Routes: `/api/metrics` (latest values and sparklines), `/api/metrics/<id>?range=1h|24h`, and `/metrics` (Prometheus text format, labelled with name, stack and service).
+  - Inside a container it needs `--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro --pid=host`; without them only host metrics work.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/client.rs`:** client mode. When the first argument is a command (`ps`, `logs`, `mcp`, …), `main` hands off here and the server code never runs.
   - It talks to a server's HTTP API, reusing `docker.rs`'s HTTP client over `tcp://` with extra headers (`Bearer` token, `X-Contraire`).

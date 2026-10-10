@@ -8,6 +8,7 @@
 - **Images:** see what's in use; pull, remove and prune.
 - **Learn:** eight illustrated lessons on containers, Linux, networking, data and Compose. They load from this repository, so they add nothing to the binary.
 - **Copy buttons** for every command, ID and code sample.
+- **Metrics:** CPU, memory, network and disk for every container and the host, read straight from cgroups every 10 s, with 24 h of history. `/metrics` serves Prometheus format for an existing Grafana.
 - **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
 
 ## Install
