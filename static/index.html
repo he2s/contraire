@@ -1158,7 +1158,7 @@ function viewOverview() {
   const mood = `<section class="card mood" aria-label="Findings"><span class="badge${F.length ? "" : " ok"}" aria-hidden="true">${F.length ? F.length : "✓"}</span><div class="txt"><strong>${!F.length ? "All quiet" : `${F.length} thing${F.length === 1 ? "" : "s"} need${F.length === 1 ? "s" : ""} a look${bad ? "" : ", nothing urgent"}`}</strong>
     <span class="muted">${F.length ? "Each line says where it comes from: Docker's own status, a crash postmortem, your apps' traces, the log patterns, or the host's counters." : `${S.containers.length} containers checked against their status, crashes, log errors${S.tel?.services?.length ? ", app traces" : ""} and host load.`}</span></div></section>`;
   const finds = F.length ? `<div class="card" style="padding:0;border-top:0"><ul class="finds">${F.map(f => `<li><span class="src${f.bad ? " bad" : ""}">${f.src}</span><span>${f.text}</span><a class="go" href="${f.href}"${f.tab ? ` data-tabjump="${f.tab}"` : ""}>${f.go} →</a></li>`).join("")}</ul></div>` : "";
-  const hc = M?.host?.spark_cpu || [], hm = M?.host?.spark_mem || [], span = n => `${Math.max(1, Math.round(n * (M?.interval || 10) / 60))} min`;
+  const hc = M?.host?.spark_cpu || [], hm = M?.host?.spark_mem || [], span = n => `${Math.max(1, n)} min`;
   const host = `<section class="grid wide" style="margin-top:24px">
     <figure class="card chart bigchart" style="margin:0"><figcaption><span>Host CPU</span><span class="mono" style="font-size:12px">${span(hc.length)}</span></figcaption>
       <div class="now">${h ? h.cpu.toFixed(0) + "%" : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${h.cpus} cores · load ${h.load1.toFixed(2)}` : "no samples yet"}</span>${hc.length > 1 ? spark(hc, 110) : ""}</figure>
@@ -1475,6 +1475,7 @@ function spark(v, h = 90) {
   const W = 300, n = v.length, max = Math.max(...v) * 1.15 || 1, avg = v.reduce((a, b) => a + b, 0) / (n || 1);
   const bw = W / Math.max(n, 30), gap = Math.min(2, bw * 0.3);
   const bars = v.map((y, i) => {
+    if (y == null) return ""; // a minute without data (server down): a gap, not a bar
     const bh = Math.max(1, y / max * h), x = W - (n - i) * bw;
     return `<rect class="b${i === n - 1 || (y > avg * 1.5 && y > 0) ? " hot" : ""}" x="${x.toFixed(1)}" y="${(h - bh).toFixed(1)}" width="${(bw - gap).toFixed(1)}" height="${bh.toFixed(1)}"/>`;
   }).join("");
@@ -1488,7 +1489,8 @@ async function loadHistory() {
     const h = await api(`/api/metrics/${id}?range=${S.histRange || "1h"}`);
     if (S.open !== id) return;
     const f = h.fields, mins = n => `${Math.round(n * h.interval / 60)} min`;
-    const stat = (v, fmt) => v.length ? `<span class="muted" style="font-size:12px">now ${fmt(v[v.length - 1])} · peak ${fmt(Math.max(...v))} · avg ${fmt(v.reduce((a, b) => a + b, 0) / v.length)}</span>` : "";
+    // Minutes while the server was down arrive as null: drawn as gaps, left out of the numbers.
+    const stat = (all, fmt) => { const v = all.filter(x => x != null); return v.length ? `<span class="muted" style="font-size:12px">now ${fmt(v[v.length - 1])} · peak ${fmt(Math.max(...v))} · avg ${fmt(v.reduce((a, b) => a + b, 0) / v.length)}</span>` : ""; };
     const pct = x => x.toFixed(1) + "%", by = x => fmtBytes(x), bps = x => fmtBytes(x) + "/s";
     const charts = [["CPU", f.cpu, pct], ["Memory", f.mem, by], ["Network in", f.rx, bps], ["Network out", f.tx, bps], ["Disk read", f.read, bps], ["Disk write", f.write, bps]];
     el.innerHTML = charts.map(([t, v, fmt]) => `<figure class="card chart"><figcaption><span>${t}</span><span class="mono" style="font-size:12px">${mins(v.length)}</span></figcaption>${v.length > 1 ? spark(v, 70) : '<div class="muted" style="height:70px;display:grid;place-items:center">no data yet</div>'}${stat(v, fmt)}</figure>`).join("");
@@ -2254,7 +2256,7 @@ api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.service
 document.addEventListener("toggle", e => { if (e.target.classList?.contains("setup")) S.setupOpen = e.target.open; }, true);
 async function loadMetrics() {
   try {
-    [S.metrics, S.patternsAll] = await Promise.all([api(`/api/metrics?spark=30${S.view === "overview" ? "&host=360" : ""}`), api("/api/logs/patterns").catch(() => S.patternsAll)]);
+    [S.metrics, S.patternsAll] = await Promise.all([api(`/api/metrics?spark=30${S.view === "overview" ? "&hostm=60" : ""}`), api("/api/logs/patterns").catch(() => S.patternsAll)]);
     if (S.view === "containers" && $("#rows") && document.activeElement?.id !== "q") render(true);
     else if (S.view === "stacks") render(true);
     else if (S.view === "overview") render();

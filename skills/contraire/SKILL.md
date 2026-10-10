@@ -32,6 +32,11 @@ If the working directory (or a parent) contains `.contraire/session.json`, the u
 
   Write it even if you changed nothing; "looked, all healthy" is useful history. Get the time with `date -u +"%Y-%m-%d %H:%M"`.
 
+## Reference and project facts
+
+- **`reference.md`** (next to this file) has general facts: exit codes and signals, restart policies, health checks, OOM and cgroups, Compose behaviour, networking errors, storage, image architectures, small-host limits, telemetry, and the rules for changing things. Read the section you need when a symptom isn't obvious; it's general knowledge, true on every host.
+- **`PROJECT.md`** (in a session folder) holds what's specific to this setup: what runs here and why, what's normal, what must not be touched, how to deploy and roll back. Read it before the first task and respect its "Hands off" section. When you learn a lasting fact (for example "the nightly backup makes `db` slow at 03:00"), propose adding it and add it once the user agrees. Don't fill it with guesses.
+
 ## Look before you touch
 
 Start read-only. These are cheap and safe:

@@ -766,6 +766,47 @@ fn out(text: &str) {
 /* ---------- sessions: `contraire init` ---------- */
 
 const SKILL_URL: &str = "https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/SKILL.md";
+const REFERENCE_URL: &str = "https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/reference.md";
+
+/// The per-project facts file `init` writes: headings only, filled in per use case.
+const PROJECT_TEMPLATE: &str = "\
+# Project
+
+What this host is for, in facts the agent can't see from Docker. Fill it in, keep it current.
+General Docker, Compose and Linux knowledge is in `.claude/skills/contraire/reference.md`; this
+file is only about *this* setup.
+
+## Purpose
+<!-- What runs here and who relies on it. -->
+
+## Stacks and services
+<!-- One line each: name, what it does, how critical (can it be down for a minute? an hour?). -->
+
+## Dependencies Compose doesn't show
+<!-- External databases, APIs, NAS mounts, DNS, other hosts. -->
+
+## Normal behaviour
+<!-- Known noisy logs, expected restarts, nightly jobs, usual CPU/memory, error rates that are fine. -->
+
+## Hands off
+<!-- Containers, volumes or times that must not be touched without asking, and why. -->
+
+## How to deploy and roll back
+<!-- Where compose.yaml lives, how images are updated, how to go back. -->
+
+## Contacts
+<!-- Who to ask or notify, and when. -->
+";
+
+/// Downloads `url` with curl (the binary has no TLS). `check` rejects error pages.
+fn fetch(url: &str, check: impl Fn(&[u8]) -> bool) -> Option<String> {
+    std::process::Command::new("curl")
+        .args(["-fsSL", "--max-time", "20", url])
+        .output()
+        .ok()
+        .filter(|o| o.status.success() && check(&o.stdout))
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+}
 
 struct Session {
     dir: PathBuf,
@@ -808,19 +849,23 @@ fn init(a: &Args, host: &str, token: Option<&str>) -> Result<String, String> {
     let remote = Remote::connect(host, token)?;
     let skill = match &a.skill_from {
         Some(p) => std::fs::read_to_string(p).map_err(|e| format!("cannot read {p}: {e}"))?,
-        // The skill lives on GitHub, not in the binary; the binary has no TLS, so ask curl.
-        None => std::process::Command::new("curl")
-            .args(["-fsSL", "--max-time", "20", SKILL_URL])
-            .output()
-            .ok()
-            .filter(|o| o.status.success() && o.stdout.starts_with(b"---"))
-            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        // The skill lives on GitHub, not in the binary.
+        None => fetch(SKILL_URL, |b| b.starts_with(b"---"))
             .ok_or_else(|| format!("could not download the skill from {SKILL_URL} (curl missing or offline?); use --skill-from <SKILL.md>"))?,
+    };
+    // The general reference sits next to the skill; with --skill-from, next to that file.
+    let reference = match &a.skill_from {
+        Some(p) => std::fs::read_to_string(std::path::Path::new(p).with_file_name("reference.md")).ok(),
+        None => fetch(REFERENCE_URL, |b| b.starts_with(b"# ")),
     };
     for d in [".contraire", ".claude/skills/contraire"] {
         std::fs::create_dir_all(dir.join(d)).map_err(|e| format!("cannot create {}: {e}", dir.join(d).display()))?;
     }
     write(&dir.join(".claude/skills/contraire/SKILL.md"), &skill)?;
+    if let Some(r) = &reference {
+        write(&dir.join(".claude/skills/contraire/reference.md"), r)?;
+    }
+    write(&dir.join("PROJECT.md"), PROJECT_TEMPLATE)?;
     write(&dir.join(".contraire/session.json"), &format!("{:#}\n", json!({ "host": remote.host, "log": "actions.log" })))?;
     write(&dir.join(".gitignore"), "# The API token never goes into git.\n.contraire/token\n")?;
     if let Some(t) = token {
@@ -832,7 +877,7 @@ fn init(a: &Args, host: &str, token: Option<&str>) -> Result<String, String> {
         opts.open(&path).and_then(|mut f| f.write_all(t.as_bytes())).map_err(|e| format!("cannot write token: {e}"))?;
     }
     // Looking around needs no confirmation; changes still ask.
-    let reads = ["ps", "inspect", "logs", "stacks", "events", "info", "activity"];
+    let reads = ["ps", "top", "inspect", "logs", "patterns", "incidents", "incident", "stacks", "events", "services", "service", "info", "activity"];
     let settings = json!({ "permissions": { "allow": reads.iter().map(|c| format!("Bash(contraire {c}:*)")).collect::<Vec<_>>() } });
     write(&dir.join(".claude/settings.json"), &format!("{settings:#}\n"))?;
 
@@ -846,7 +891,10 @@ fn init(a: &Args, host: &str, token: Option<&str>) -> Result<String, String> {
         &format!(
             "# Docker operations session\n\n\
              This folder is a working session for the Docker host behind {host} ({about}), operated with the `contraire` CLI.\n\n\
-             - Use the **contraire** skill (`.claude/skills/contraire/`) for anything about containers, logs, stacks or recent changes.\n\
+             - Use the **contraire** skill (`.claude/skills/contraire/`) for anything about containers, logs, stacks, telemetry or recent changes. \
+             Its `reference.md` holds general Docker, Compose and Linux facts and the rules for changing things.\n\
+             - Read `PROJECT.md` before the first task: what this host is for, what is normal here, what not to touch. \
+             When you learn a lasting fact about this setup (and the user confirms it), add it there. It starts empty; ask the user to fill in the gaps that matter for the task.\n\
              - Every `contraire` command run here is appended automatically to `.contraire/actions.log` (time, ok/FAIL, read/change, command). Don't edit it.\n\
              - `SESSION.md` is the journal for humans. After each task, append a dated entry: what you checked, what you found (with evidence), \
              what you changed, and what you recommend. Changes matter most.\n\
@@ -867,11 +915,12 @@ fn init(a: &Args, host: &str, token: Option<&str>) -> Result<String, String> {
         let _ = std::process::Command::new("git").args(["add", "-A"]).current_dir(&dir).status();
     }
     Ok(format!(
-        "Created session {dir}\n  host      {host} ({about})\n  token     {tok}\n  skill     .claude/skills/contraire/SKILL.md\n  log       .contraire/actions.log\n  journal   SESSION.md\n  git       {git}\n\nNext:\n  cd {dir} && claude\n",
+        "Created session {dir}\n  host      {host} ({about})\n  token     {tok}\n  skill     .claude/skills/contraire/SKILL.md\n  reference {refr}\n  project   PROJECT.md (fill in what this host is for)\n  log       .contraire/actions.log\n  journal   SESSION.md\n  git       {git}\n\nNext:\n  cd {dir} && claude\n",
         dir = dir.display(),
         host = remote.host,
         tok = if token.is_some() { "saved in .contraire/token (git-ignored)" } else { "none: set CONTRAIRE_TOKEN, or add .contraire/token" },
         git = if git { "initialised (files staged, not committed)" } else { "not available" },
+        refr = if reference.is_some() { ".claude/skills/contraire/reference.md" } else { "not found (download failed); the skill works without it" },
     ))
 }
 

@@ -9,10 +9,14 @@
 //! number of request threads read, with no locks and no per-sample allocation. Each
 //! container gets 1 h at 10 s and 24 h at 1 min, about 50 KB, allocated on first sight.
 //! Slots outlive their container (useful for postmortems) and are reused least-recently-seen.
+//!
+//! The minute averages are also appended to `<state>/metrics.bin` (40 bytes per container
+//! per minute, rotated at 2 MB, so ~2 MB/day of SD-card writes for 30 containers) and
+//! replayed on start, so the 24 h history survives restarts and reboots.
 
 use std::collections::HashMap;
 use std::fs;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -260,6 +264,86 @@ struct Prev {
     at: Option<Instant>,
 }
 
+/// Append-only minute records: u32 minute (unix s), u64 key (`HOST_KEY` = host), 7 × f32, LE.
+const REC: usize = 4 + 8 + NF * 4;
+const HOST_KEY: u64 = u64::MAX;
+const HISTORY_MAX: u64 = 2 << 20;
+
+struct History {
+    path: PathBuf,
+    buf: Vec<u8>,
+}
+
+impl History {
+    fn add(&mut self, now: u64, key: u64, v: &[f32; NF]) {
+        self.buf.extend_from_slice(&((now / 60 * 60) as u32).to_le_bytes());
+        self.buf.extend_from_slice(&key.to_le_bytes());
+        for x in v {
+            self.buf.extend_from_slice(&x.to_le_bytes());
+        }
+    }
+
+    /// One `O_APPEND` write per pass that completed a minute; past 2 MB the file moves to `.1`.
+    fn flush(&mut self) {
+        if self.buf.is_empty() {
+            return;
+        }
+        if fs::metadata(&self.path).is_ok_and(|m| m.len() > HISTORY_MAX) {
+            let _ = fs::rename(&self.path, self.path.with_extension("bin.1"));
+        }
+        if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&self.path) {
+            let _ = f.write_all(&self.buf);
+        }
+        self.buf.clear();
+    }
+}
+
+/// Replays the last 24 h of minute records for the host and the containers in `keys` (running
+/// now: history of long-gone containers would only cost memory). Missing minutes, e.g. while
+/// the server was down, become NaN (`null` in JSON), so the series stays aligned to the clock.
+fn restore(store: &Store, path: &Path, keys: &[u64], now: u64) -> usize {
+    let mut last: HashMap<u64, u64> = HashMap::new();
+    let mut n = 0;
+    let gap = [f32::NAN; NF];
+    let ring_of = |key: u64, ts: u64| -> &Ring {
+        if key == HOST_KEY {
+            &store.host.coarse
+        } else {
+            let slot = store.claim(key, ts);
+            &slot.rings.get_or_init(|| Box::new(Rings::new())).coarse
+        }
+    };
+    for p in [path.with_extension("bin.1"), path.to_path_buf()] {
+        let Ok(bytes) = fs::read(&p) else { continue };
+        #[allow(unknown_lints, clippy::chunks_exact_to_as_chunks)] // as_chunks needs Rust 1.88; Pi distros ship older
+        for r in bytes.chunks_exact(REC) {
+            let ts = u32::from_le_bytes(r[0..4].try_into().unwrap()) as u64;
+            let key = u64::from_le_bytes(r[4..12].try_into().unwrap());
+            if ts + 86_400 < now || ts > now || (key != HOST_KEY && !keys.contains(&key)) {
+                continue;
+            }
+            let mut v = [0f32; NF];
+            for (i, x) in v.iter_mut().enumerate() {
+                *x = f32::from_le_bytes(r[12 + i * 4..16 + i * 4].try_into().unwrap());
+            }
+            let ring = ring_of(key, ts);
+            match last.get(&key) {
+                Some(&l) if ts <= l => continue,
+                Some(&l) => (0..((ts - l) / 60).saturating_sub(1).min(COARSE as u64)).for_each(|_| ring.push(&gap)),
+                None => {}
+            }
+            ring.push(&v);
+            last.insert(key, ts);
+            n += 1;
+        }
+    }
+    for (key, l) in last {
+        let ring = ring_of(key, l);
+        (0..((now / 60 * 60).saturating_sub(l) / 60).saturating_sub(1).min(COARSE as u64)).for_each(|_| ring.push(&gap));
+    }
+    n
+}
+
 #[derive(Default)]
 struct Acc {
     sum: [f32; NF],
@@ -267,7 +351,8 @@ struct Acc {
 }
 
 impl Acc {
-    fn add(&mut self, v: &[f32; NF], ring: &Ring) {
+    /// Adds a sample; returns the minute average when one completes.
+    fn add(&mut self, v: &[f32; NF], ring: &Ring) -> Option<[f32; NF]> {
         for (s, x) in self.sum.iter_mut().zip(v) {
             *s += x;
         }
@@ -279,14 +364,29 @@ impl Acc {
             }
             ring.push(&avg);
             *self = Acc::default();
+            return Some(avg);
         }
+        None
     }
 }
 
-pub fn start(cgroup_base: &str) -> Arc<Store> {
+pub fn start(cgroup_base: &str, state_dir: Option<&Path>) -> Arc<Store> {
     let store = Arc::new(Store::new(detect_root(Path::new(cgroup_base))));
+    let history = state_dir.map(|d| History { path: d.join("metrics.bin"), buf: Vec::with_capacity(64 * REC) });
+    if let Some(h) = &history {
+        let running: Vec<u64> = store
+            .root
+            .as_ref()
+            .and_then(|r| fs::read_dir(r).ok())
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|e| container_id(&e.file_name().to_string_lossy()).and_then(key_of))
+            .collect();
+        restore(&store, &h.path, &running, crate::unix_now());
+    }
     let s = store.clone();
-    let _ = std::thread::Builder::new().name("metrics".into()).stack_size(128 * 1024).spawn(move || sampler(&s));
+    let _ = std::thread::Builder::new().name("metrics".into()).stack_size(128 * 1024).spawn(move || sampler(&s, history));
     store
 }
 
@@ -294,7 +394,7 @@ fn rate(now: f64, before: f64, secs: f64) -> f32 {
     if secs <= 0.0 || now < before { 0.0 } else { ((now - before) / secs) as f32 }
 }
 
-fn sampler(store: &Store) {
+fn sampler(store: &Store, mut history: Option<History>) {
     let mut rd = Reader { buf: String::with_capacity(8192) };
     let mut prev: HashMap<u64, Prev> = HashMap::new();
     let mut acc: HashMap<u64, Acc> = HashMap::new();
@@ -321,7 +421,9 @@ fn sampler(store: &Store) {
             let v = [cpu as f32, (mem_total - mem_avail) as f32, load, rate(rx, np.rx, secs), rate(tx, np.tx, secs), mem_total as f32, cpus];
             if np.at.is_some() {
                 store.host.fine.push(&v);
-                host_acc.add(&v, &store.host.coarse);
+                if let (Some(avg), Some(h)) = (host_acc.add(&v, &store.host.coarse), history.as_mut()) {
+                    h.add(now, HOST_KEY, &avg);
+                }
             }
             np.rx = rx;
             np.tx = tx;
@@ -379,7 +481,9 @@ fn sampler(store: &Store) {
                 }
                 let rings = slot.rings.get_or_init(|| Box::new(Rings::new()));
                 rings.fine.push(&v);
-                acc.entry(key).or_default().add(&v, &rings.coarse);
+                if let (Some(avg), Some(h)) = (acc.entry(key).or_default().add(&v, &rings.coarse), history.as_mut()) {
+                    h.add(now, key, &avg);
+                }
             }
             // Forget counters of containers that are gone (their history stays in the slot).
             if prev.len() > ids.len() + 16 {
@@ -387,6 +491,9 @@ fn sampler(store: &Store) {
                 prev.retain(|k, _| live.contains(k));
                 acc.retain(|k, _| live.contains(k));
             }
+        }
+        if let Some(h) = history.as_mut() {
+            h.flush();
         }
         store.samples.fetch_add(1, Ordering::Relaxed);
         store.last_pass_ns.store(t0.elapsed().as_nanos() as u64, Ordering::Relaxed);
@@ -407,6 +514,32 @@ mod tests {
         }
         assert_eq!(r.series(0, 10), vec![7.0, 8.0, 9.0]);
         assert_eq!(r.last(0), Some(9.0));
+    }
+
+    #[test]
+    fn history_survives_a_restart_with_gaps() {
+        let dir = std::env::temp_dir().join(format!("contraire-hist-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("metrics.bin");
+        let _ = fs::remove_file(&path);
+        let now = 1_800_000_000 / 60 * 60;
+        let mut h = History { path: path.clone(), buf: Vec::new() };
+        // Container 7: minutes -10 and -9, then down until -3; the host only at -5.
+        for (t, key, cpu) in [(now - 600, 7, 1.0), (now - 540, 7, 2.0), (now - 180, 7, 3.0), (now - 300, HOST_KEY, 50.0)] {
+            h.add(t, key, &[cpu, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
+        }
+        h.add(now - 60, 8, &[9.0; NF]); // not running any more: skipped
+        h.flush();
+        let store = Store::new(None);
+        assert_eq!(restore(&store, &path, &[7], now), 4);
+        let cpu = store.container(&format!("{:016x}", 7u64), true, COARSE).unwrap().remove(0);
+        // -10, -9, five missing minutes, -3, then -2 and -1 missing up to now.
+        assert_eq!(cpu.len(), 10);
+        assert_eq!((cpu[0], cpu[1], cpu[7]), (1.0, 2.0, 3.0));
+        assert!(cpu[2..7].iter().all(|x| x.is_nan()) && cpu[8..].iter().all(|x| x.is_nan()));
+        assert_eq!(store.host(true, COARSE)[0].first(), Some(&50.0));
+        assert!(store.find(8).is_none());
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

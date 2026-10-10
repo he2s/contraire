@@ -81,7 +81,7 @@ fn main() {
     let audit = audit::Audit::open(&cfg.audit, |k| std::env::var(k).ok());
     let state_dir = audit.path().and_then(|p| p.parent()).map(Path::to_path_buf);
     let token_store = tokens::Store::open(state_dir.as_ref().map(|d| d.join("tokens.json")));
-    let metrics_store = metrics::start("/sys/fs/cgroup");
+    let metrics_store = metrics::start("/sys/fs/cgroup", state_dir.as_deref());
     let watch = logwatch::Watch::start(docker.clone(), metrics_store.clone(), state_dir);
     let app = Arc::new(App {
         docker: docker.clone(),
@@ -589,8 +589,11 @@ impl App {
             o.insert("spark_mem".into(), json!(mem));
             containers.insert(format!("{key:016x}"), Value::Object(o));
         }
-        let host_n = req.param("host").and_then(|n| n.parse().ok()).unwrap_or(spark).min(metrics::FINE - 1);
-        let host = self.metrics.host(false, host_n);
+        // `hostm=N`: the host's last N minute averages (restored after a restart) instead of 10 s samples.
+        let host = match req.param("hostm").and_then(|n| n.parse::<usize>().ok()) {
+            Some(m) => self.metrics.host(true, m.min(metrics::COARSE - 1)),
+            None => self.metrics.host(false, spark),
+        };
         let latest = self.metrics.host_latest().map(|v| {
             metrics::HOST_FIELDS.iter().zip(v).map(|(k, x)| ((*k).to_string(), json!(x))).collect::<serde_json::Map<_, _>>()
         });

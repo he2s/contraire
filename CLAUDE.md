@@ -32,6 +32,14 @@ For high-volume data (log lines, events, samples), design for streaming, bounded
 
 See `ROADMAP.md` for planned features (audit log, API tokens, workstation client and MCP server, Learn section and man page, script actions) and the size and memory budgets. Build toward it.
 
+## Keep every text consistent
+
+The same facts appear in many places: `README.md`, this file, `ROADMAP.md`, `KILLER_FEATURES.md`, `docs/learn/` (lessons and `cli-cheatsheet.md`), `skills/contraire/SKILL.md`, the client `HELP` text, the MCP `TOOLS` catalogue and the files `contraire init` writes (`src/client.rs`), the `OPTS` table (`src/cli.rs`), and in `static/index.html` the nav labels, `data-hint`s, the `HELP` popovers, setup snippets and the cheat-sheet demo. Installers, the Dockerfile, the release workflow and `footprint.sh` carry numbers too.
+
+- **One change, every place.** When a command, flag, env var, route, page, tool, limit or number changes, update every place that mentions it in the same commit. Before committing, `grep` the old name or number across the repository.
+- **One name per thing.** Use the names the UI shows (Overview, Containers, Stacks, Images, Incidents, Telemetry, Activity, Learn, Cheat sheet, Access) in docs, help texts and CLI output alike. Don't introduce synonyms.
+- **The code is the truth.** Counts (MCP tools, lessons, commands), sizes, budgets and retention times are copied from the code, never estimated. A feature is "planned" only until it ships; then the roadmap and this file say so.
+
 ## Commands
 
 ```sh
@@ -116,6 +124,7 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - History lives in rings of `AtomicU32` (f32 bits): 1 h at 10 s and 24 h at 1-minute averages, about 50 KB per container, allocated on first sight.
   - One writer, lock-free readers. Slots outlive their container and are reused least-recently-seen.
   - Routes: `/api/metrics` (latest values and sparklines), `/api/metrics/<id>?range=1h|24h`, and `/metrics` (Prometheus text format, labelled with name, stack and service).
+  - Minute averages are appended to `<state>/metrics.bin` (40-byte records, rotated at 2 MB to `.1`) and replayed on start for the host and running containers; minutes without data become NaN (`null` in JSON), so series stay aligned to the clock.
   - Inside a container it needs `--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro --pid=host`; without them only host metrics work.
 - **`src/logwatch.rs`:** log patterns and the crash flight recorder.
   - One follower thread per running container. A supervisor watches Docker `start` and `kill` events.
