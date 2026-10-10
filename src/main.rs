@@ -589,7 +589,8 @@ impl App {
             o.insert("spark_mem".into(), json!(mem));
             containers.insert(format!("{key:016x}"), Value::Object(o));
         }
-        let host = self.metrics.host(false, spark);
+        let host_n = req.param("host").and_then(|n| n.parse().ok()).unwrap_or(spark).min(metrics::FINE - 1);
+        let host = self.metrics.host(false, host_n);
         let latest = self.metrics.host_latest().map(|v| {
             metrics::HOST_FIELDS.iter().zip(v).map(|(k, x)| ((*k).to_string(), json!(x))).collect::<serde_json::Map<_, _>>()
         });

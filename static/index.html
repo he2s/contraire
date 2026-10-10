@@ -391,6 +391,25 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .pat .ex code { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
 @media (max-width: 700px) { .pat summary { grid-template-columns: 70px minmax(0, 1fr); } .pat .lvl, .pat .when { display: none; } .pat .ex { padding-left: 12px; } }
 .inc-tr { grid-template-columns: minmax(180px, 1.2fr) 190px minmax(0, 2.4fr) 110px; min-width: 760px; }
+/* overview */
+.finds { list-style: none; margin: 0; padding: 0; }
+.finds li { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line-soft); }
+.finds li:first-child { border-top: 0; }
+.finds .src { font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.finds .src.bad { color: var(--accent-ink); }
+.finds a.go { font-weight: 700; font-size: 13px; color: var(--text); text-decoration: none; white-space: nowrap; }
+.finds a.go:hover { color: var(--accent-ink); }
+.ovl { list-style: none; margin: 0; padding: 0; }
+.ovl a { display: grid; grid-template-columns: minmax(0, 1fr) 96px minmax(84px, auto); gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--text); text-decoration: none; }
+.ovl li:first-child a { border-top: 0; }
+.ovl a:hover b { color: var(--accent-ink); }
+.ovl b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ovl .num { font-family: var(--mono); font-size: 12.5px; text-align: right; white-space: nowrap; }
+.ovhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.ovhead a { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); text-decoration: none; white-space: nowrap; }
+.bigchart .spark { height: 110px !important; }
+.bigchart .now { font-family: var(--display); font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+@media (max-width: 700px) { .finds li { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
 .tel-tr { grid-template-columns: minmax(170px, 1.4fr) 110px 120px 210px minmax(140px, 1fr) 90px; min-width: 900px; }
 .op-tr { grid-template-columns: minmax(0, 2.4fr) 90px 100px 210px; min-width: 640px; }
 .ex-tr { grid-template-columns: 90px minmax(0, 1.4fr) minmax(0, 2fr) 120px 80px; min-width: 760px; }
@@ -524,6 +543,7 @@ h1 .help { width: 22px; height: 22px; font-size: 13px; position: relative; top: 
 
     <div class="nav">
       <span class="navlabel">Manage</span>
+      <a href="#overview" data-nav="overview" data-hint="Everything at once: what needs a look, host load, busy containers, log errors, app health, crashes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15v2M11 11v6M15 7v10M19 12v5"/></svg><span>Overview</span><span class="count" id="n-ov">–</span></a>
       <a href="#containers" data-nav="containers" data-hint="Every container on this host, with live status, resources and actions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
       <a href="#stacks" data-nav="stacks" data-hint="Docker Compose projects: start, stop or restart a whole stack in dependency order"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
       <a href="#images" data-nav="images" data-hint="Images on disk: what uses them, how big they are, pull and clean up"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
@@ -680,6 +700,13 @@ const HELP = {
   "stacks": ["Stacks", "Docker Compose projects, recognised from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
   "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
   "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
+  "overview": ["Overview", "Every signal this dashboard collects, on one page: Docker's own status, CPU and memory from cgroups and <code>/proc</code>, errors mined from every log, crash postmortems and, if your apps send them, OpenTelemetry traces. The list at the top is plain rules over those numbers, never a guess, and each line names its source."],
+  "busiest containers": ["Busiest containers", "Ranked by CPU right now (100% = one full core), with the last 5 minutes as bars and current memory. Click for the container's history."],
+  "errors in the logs": ["Errors in the logs", "Containers whose log has lines mentioning errors, panics, exceptions or failures, as a count of all lines since start. <b>New</b> means kinds of error that first appeared after startup, usually the interesting ones."],
+  "app health": ["App health", "Services reporting OpenTelemetry traces: error rate and 95th percentile latency over the last hour, with requests per minute as bars."],
+  "recent crashes": ["Recent crashes", "Postmortems from the flight recorder, newest first."],
+  "host cpu": ["Host CPU", "Share of all cores in use, from <code>/proc/stat</code> every 10 s, last hour. Load is the number of tasks running or waiting; above the core count, things queue."],
+  "host memory": ["Host memory", "Memory in use (total minus available, from <code>/proc/meminfo</code>), last hour, and the host's network traffic."],
   "telemetry": ["Telemetry", "Your own apps can report how they're doing over OpenTelemetry (OTLP/HTTP): traces become requests per minute, error rate and latency per service, logs become patterns. Kept in memory for an hour in fixed-size rings (about 2 KB per service), never on disk. Optionally forwarded on to another collector with <code>--otlp-forward</code>."],
   "service": ["Service", "The <code>service.name</code> an app reports itself as. Click a row for its operations, failed and slowest requests, and log patterns."],
   "requests/min": ["Requests/min", "Incoming requests (server and consumer spans) per minute, averaged over the last 5 minutes. Calls a service makes to others count for those others."],
@@ -723,7 +750,7 @@ function helpBtn(key) {
 /* Attach "?" buttons by label text: page titles, card titles, column headers, sidebar boxes. */
 function decorateHelp(root) {
   const label = el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join("").trim().toLowerCase();
-  root.querySelectorAll(".ph h1, main h2, .stat .top > span:first-child, .tr.th > span, .sbox .k, .navlabel").forEach(el => {
+  root.querySelectorAll(".ph h1, main h2, .bigchart figcaption > span:first-child, .stat .top > span:first-child, .tr.th > span, .sbox .k, .navlabel").forEach(el => {
     if (el.querySelector(".help")) return;
     const k = label(el);
     if (HELP[k]) el.insertAdjacentHTML("beforeend", helpBtn(k));
@@ -1102,6 +1129,52 @@ function incidentDetail(i) {
       <div class="card"><h2 style="margin-bottom:10px">New since it started</h2>${pats(i.new_patterns, "Nothing that wasn't there at startup.")}</div>
     </section>
     <div class="console"><div class="bar2"><b style="padding:0 6px">Last ${i.last_lines?.length || 0} log lines</b></div><div class="loglines" style="height:auto;max-height:60vh">${lines || '<div class="note">No output was captured.</div>'}</div></div>`;
+}
+
+/* ---------- overview: every signal on one page ---------- */
+/* Findings are rules over what the server already measures, not guesses: each names its source. */
+function findings() {
+  const out = [], cs = S.containers;
+  cs.filter(c => status(c).bucket === "attention").forEach(c => out.push({ src: "Docker", bad: true, text: `<b>${esc(cname(c))}</b> is ${esc(status(c).label.toLowerCase())}`, href: `#c/${esc(c.Id)}`, go: "Open" }));
+  const day = Date.now() / 1000 - 86400;
+  const seen = new Set();
+  (S.incidents?.incidents || []).filter(i => i.last > day && !seen.has(i.container.name) && seen.add(i.container.name)).slice(0, 4).forEach(i => out.push({ src: "Crash", bad: true, text: `<b>${esc(i.container.name)}</b> ${i.oom_killed ? "ran out of memory" : "exited with code " + i.exit_code}${i.repeats > 1 ? `, ${i.repeats}× in a row` : ""} · ${ago(i.last)}`, href: `#incidents/${esc(i.id)}`, go: "Postmortem" }));
+  (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.error_rate >= .05).sort((a, b) => b.errors_1h - a.errors_1h).slice(0, 4)
+    .forEach(x => out.push({ src: "Traces", bad: x.error_rate >= .2, text: `<b>${esc(x.service)}</b> fails ${pctTxt(x.error_rate)} of its requests (${x.errors_1h.toLocaleString()} in the last hour)`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Which calls" }));
+  (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.p95 > 2000 && x.error_rate < .05).slice(0, 2)
+    .forEach(x => out.push({ src: "Traces", text: `<b>${esc(x.service)}</b> is slow: 1 in 20 requests takes over ${ms(x.p95)}`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Slowest" }));
+  cs.map(c => [c, S.patternsAll?.[c.Id.slice(0, 16)]]).filter(([, p]) => p?.new_error_patterns).sort((a, b) => b[1].new_error_patterns - a[1].new_error_patterns).slice(0, 4)
+    .forEach(([c, p]) => out.push({ src: "Logs", text: `<b>${esc(cname(c))}</b> logs ${p.new_error_patterns} new kind${p.new_error_patterns === 1 ? "" : "s"} of error since it started`, href: `#c/${esc(c.Id)}`, go: "Patterns", tab: "patterns" }));
+  const h = S.metrics?.host?.latest;
+  if (h?.mem_total && h.mem / h.mem_total > .9) out.push({ src: "Host", bad: true, text: `Memory is ${(h.mem / h.mem_total * 100).toFixed(0)}% full: containers may soon be killed for lack of it`, href: "#containers", go: "Who uses it" });
+  if (h?.cpus && h.load1 > h.cpus * 1.5) out.push({ src: "Host", text: `The host is overloaded: ${h.load1.toFixed(1)} tasks waiting for ${h.cpus} CPUs`, href: "#containers", go: "Who's busy" });
+  return out;
+}
+function findingsCount() { const el = $("#n-ov"); if (el && S.containers) { const n = findings().length; el.textContent = n || "✓"; } }
+function viewOverview() {
+  const F = findings(), bad = F.filter(f => f.bad).length, M = S.metrics, h = M?.host?.latest;
+  const sources = [["Docker", true], ["cgroups", M?.available], ["Logs", !!S.patternsAll], ["Traces", S.tel?.services?.length > 0]];
+  const head = `<header class="ph"><div><div class="kick">${sources.map(([n, on]) => on ? n : `<span style="opacity:.45">${n}</span>`).join(" · ")} · live</div><h1>Overview</h1></div></header>`;
+  const mood = `<section class="card mood" aria-label="Findings"><span class="badge${F.length ? "" : " ok"}" aria-hidden="true">${F.length ? F.length : "✓"}</span><div class="txt"><strong>${!F.length ? "All quiet" : `${F.length} thing${F.length === 1 ? "" : "s"} need${F.length === 1 ? "s" : ""} a look${bad ? "" : ", nothing urgent"}`}</strong>
+    <span class="muted">${F.length ? "Each line says where it comes from: Docker's own status, a crash postmortem, your apps' traces, the log patterns, or the host's counters." : `${S.containers.length} containers checked against their status, crashes, log errors${S.tel?.services?.length ? ", app traces" : ""} and host load.`}</span></div></section>`;
+  const finds = F.length ? `<div class="card" style="padding:0;border-top:0"><ul class="finds">${F.map(f => `<li><span class="src${f.bad ? " bad" : ""}">${f.src}</span><span>${f.text}</span><a class="go" href="${f.href}"${f.tab ? ` data-tabjump="${f.tab}"` : ""}>${f.go} →</a></li>`).join("")}</ul></div>` : "";
+  const hc = M?.host?.spark_cpu || [], hm = M?.host?.spark_mem || [], span = n => `${Math.max(1, Math.round(n * (M?.interval || 10) / 60))} min`;
+  const host = `<section class="grid wide" style="margin-top:24px">
+    <figure class="card chart bigchart" style="margin:0"><figcaption><span>Host CPU</span><span class="mono" style="font-size:12px">${span(hc.length)}</span></figcaption>
+      <div class="now">${h ? h.cpu.toFixed(0) + "%" : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${h.cpus} cores · load ${h.load1.toFixed(2)}` : "no samples yet"}</span>${hc.length > 1 ? spark(hc, 110) : ""}</figure>
+    <figure class="card chart bigchart" style="margin:0"><figcaption><span>Host memory</span><span class="mono" style="font-size:12px">${span(hm.length)}</span></figcaption>
+      <div class="now">${h ? fmtBytes(h.mem) : "–"}</div><span class="muted" style="font-size:12px">${h ? `of ${fmtBytes(h.mem_total)} · network ↓ ${fmtBytes(h.rx)}/s ↑ ${fmtBytes(h.tx)}/s` : ""}</span>${hm.length > 1 ? spark(hm, 110) : ""}</figure></section>`;
+  const busy = S.containers.map(c => [c, metricsOf(c)]).filter(([, m]) => m).sort((a, b) => b[1].cpu - a[1].cpu || b[1].mem - a[1].mem).slice(0, 7);
+  const card = (title, link, body) => `<div class="card"><div class="ovhead"><h2>${title}</h2>${link}</div>${body}</div>`;
+  const cBusy = card("Busiest containers", `<a href="#containers">All ${S.containers.length} →</a>`, busy.length ? `<ul class="ovl">${busy.map(([c, m]) => `<li><a href="#c/${esc(c.Id)}" data-tabjump="stats"><b>${esc(cname(c))}</b>${mini(m.spark_cpu || [])}<span class="num">${m.cpu.toFixed(1)}% · ${fmtBytes(m.mem)}</span></a></li>`).join("")}</ul>` : `<p class="muted">${M?.available === false ? "cgroup files aren't readable here, so per-container metrics are off." : "Waiting for the first samples (every 10 s)."}</p>`);
+  const logs = S.containers.map(c => [c, S.patternsAll?.[c.Id.slice(0, 16)]]).filter(([, p]) => p?.error_lines).sort((a, b) => (b[1].new_error_patterns - a[1].new_error_patterns) || (b[1].error_lines - a[1].error_lines)).slice(0, 7);
+  const cLogs = card("Errors in the logs", `<span class="muted" style="font-size:12px">since each started</span>`, logs.length ? `<ul class="ovl">${logs.map(([c, p]) => `<li><a href="#c/${esc(c.Id)}" data-tabjump="patterns"><b>${esc(cname(c))}</b><span>${p.new_error_patterns ? `<span class="pill s-bad" style="height:20px;font-size:11px">${p.new_error_patterns} new</span>` : ""}</span><span class="num">${p.error_lines.toLocaleString()} of ${p.lines.toLocaleString()}</span></a></li>`).join("")}</ul>` : `<p class="muted">No container has logged an error line${S.patternsAll ? "" : " (loading…)"}.</p>`);
+  const sv = [...(S.tel?.services || [])].filter(x => x.requests_1h).sort((a, b) => b.errors_1h - a.errors_1h || b.rpm - a.rpm).slice(0, 7);
+  const cTel = card("App health", `<a href="#telemetry">${S.tel?.services?.length ? `All ${S.tel.services.length} →` : "Set up →"}</a>`, sv.length ? `<ul class="ovl">${sv.map(x => `<li><a href="#telemetry/${encodeURIComponent(x.service)}"><b>${esc(x.service)}</b>${mini(x.spark)}<span class="num">${x.error_rate >= .05 ? `<span style="color:var(--accent-ink);font-weight:700">${pctTxt(x.error_rate)}</span>` : pctTxt(x.error_rate)} · ${ms(x.p95)}</span></a></li>`).join("")}</ul><p class="muted" style="font-size:12px;margin:8px 0 0">errors · 95th percentile latency, from OpenTelemetry traces</p>` : `<p class="muted">Your apps can report requests, errors and latency over OpenTelemetry. The Telemetry page has two-line setups.</p>`);
+  const inc = (S.incidents?.incidents || []).slice(0, 5);
+  const cInc = card("Recent crashes", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${i.oom_killed ? "OOM" : "exit " + i.exit_code}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
+  const cEv = `<div class="card"><div class="ovhead"><h2>Recent events</h2><span class="muted" style="font-size:12px">live from docker events</span></div><ol class="events" id="events">${eventsHtml()}</ol></div>`;
+  return head + mood + finds + host + `<section class="grid wide" style="margin-top:24px">${cBusy}${cLogs}${cTel}${cInc}</section><section class="grid wide" style="margin-top:24px">${cEv}</section>`;
 }
 
 /* ---------- telemetry: what apps report over OpenTelemetry (OTLP/HTTP) ---------- */
@@ -1981,7 +2054,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet", "incidents", "telemetry"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : !v ? "overview" : ["overview", "containers", "stacks", "images", "learn", "about", "activity", "access", "cheatsheet", "incidents", "telemetry"].includes(v) ? v : "overview";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
@@ -1997,6 +2070,7 @@ function route() {
   if (view === "access") loadTokens();
   if (view === "incidents") loadIncidents(arg);
   if (view === "telemetry") loadTelemetry(arg);
+  if (view === "overview") loadMetrics();
   if (view !== "access") S.newToken = null;
   window.scrollTo({ top: 0 });
 }
@@ -2022,7 +2096,7 @@ function render(soft) {
     if (c) $("#c-head").innerHTML = containerHead(c);
     return;
   }
-  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, incidents: viewIncidents, telemetry: viewTelemetry, container: viewContainer }[S.view]();
+  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, overview: viewOverview, incidents: viewIncidents, telemetry: viewTelemetry, container: viewContainer }[S.view]();
   // Keep the search box's focus and caret across re-renders, so typing isn't interrupted.
   const q = document.activeElement?.id === "q" ? $("#q") : null;
   const pos = q?.selectionStart;
@@ -2169,24 +2243,26 @@ window.addEventListener("hashchange", route);
 setInterval(() => { if (!document.hidden) refresh(false); }, 15000);
 /* cgroup metrics refresh every 10 s on the server; follow along while visible. */
 async function loadIncidentCount() {
-  try { const r = await api("/api/incidents"); S.incidents = r; $("#n-inc").textContent = r.incidents.length; } catch {}
+  try { const r = await api("/api/incidents"); S.incidents = r; $("#n-inc").textContent = r.incidents.length; if (S.view === "overview") render(); } catch {}
 }
 loadIncidentCount();
 setInterval(() => { if (!document.hidden) loadIncidentCount(); }, 30000);
 /* Telemetry aggregates per minute; refresh the open page every 10 s, the sidebar count every 30 s. */
 setInterval(() => { if (!document.hidden && S.view === "telemetry" && !$("#view details.pat[open]") && !getSelection().toString()) loadTelemetry(S.arg); }, 10000);
-setInterval(() => { if (!document.hidden && S.view !== "telemetry") api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.services.length; }).catch(() => {}); }, 30000);
+setInterval(() => { if (!document.hidden && S.view !== "telemetry") api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.services.length; if (S.view === "overview") render(); }).catch(() => {}); }, 30000);
 api("/api/telemetry").then(t => { S.tel = t; $("#n-tel").textContent = t.services.length; }).catch(() => {});
 document.addEventListener("toggle", e => { if (e.target.classList?.contains("setup")) S.setupOpen = e.target.open; }, true);
 async function loadMetrics() {
   try {
-    [S.metrics, S.patternsAll] = await Promise.all([api("/api/metrics?spark=30"), api("/api/logs/patterns").catch(() => S.patternsAll)]);
+    [S.metrics, S.patternsAll] = await Promise.all([api(`/api/metrics?spark=30${S.view === "overview" ? "&host=360" : ""}`), api("/api/logs/patterns").catch(() => S.patternsAll)]);
     if (S.view === "containers" && $("#rows") && document.activeElement?.id !== "q") render(true);
     else if (S.view === "stacks") render(true);
+    else if (S.view === "overview") render();
+    findingsCount();
   } catch {}
 }
 loadMetrics();
-setInterval(() => { if (!document.hidden && /containers|stacks/.test(S.view)) loadMetrics(); }, 10000);
+setInterval(() => { if (!document.hidden && /containers|stacks|overview/.test(S.view)) loadMetrics(); }, 10000);
 setInterval(() => { if (!document.hidden && S.view === "container" && S.tab === "stats") loadHistory(); }, 30000);
 setInterval(() => { if (!document.hidden) loadSelf(); }, 3000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(false); });
