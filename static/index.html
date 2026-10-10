@@ -201,6 +201,12 @@ main { min-width: 0; padding: 28px clamp(16px, 2.4vw, 40px) 56px; display: flex;
 .tr:not(.th) { cursor: pointer; transition: background .1s; }
 .tr:not(.th):hover { background: var(--panel-2); box-shadow: inset 4px 0 0 var(--accent); }
 .act-tr { grid-template-columns: 130px minmax(180px, 1.2fr) minmax(160px, 1fr) minmax(160px, 1fr) minmax(180px, 1.3fr); }
+.tok-tr { grid-template-columns: minmax(200px, 1.6fr) 110px 120px 120px 130px 110px; }
+.scope-opt { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: var(--rule) solid var(--line); background: var(--panel-2); cursor: pointer; }
+.scope-opt:has(input:checked) { background: var(--invert); color: var(--invert-fg); }
+.scope-opt:has(input:checked) .muted { color: var(--invert-fg); opacity: .8; }
+.scope-opt input { accent-color: var(--accent); margin-top: 3px; }
+select.field { appearance: auto; color: var(--text); font-weight: 600; }
 .img-tr { grid-template-columns: minmax(260px, 2.4fr) minmax(160px, 1fr) 120px minmax(160px, 1.2fr) 70px; }
 .nm { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .nm > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -391,6 +397,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
       <a href="#images" data-nav="images"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
       <a href="#activity" data-nav="activity"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
       <a href="#learn" data-nav="learn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
+      <a href="#access" data-nav="access"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg><span>Access</span></a>
       <a href="#about" data-nav="about"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
     </div>
 
@@ -781,6 +788,7 @@ const VERB = {
   "container.unpause": "Resumed", "container.kill": "Killed", "container.remove": "Removed", "container.prune": "Pruned stopped containers",
   "image.pull": "Pulled image", "image.remove": "Removed image", "image.prune": "Pruned dangling images",
   "project.start": "Started stack", "project.stop": "Stopped stack", "project.restart": "Restarted stack",
+  "token.create": "Created token", "token.revoke": "Revoked token",
 };
 const findContainer = t => S.containers.find(c => c.Id === t || cname(c) === t || (t.length >= 12 && c.Id.startsWith(t)));
 function auditTarget(e) {
@@ -793,7 +801,7 @@ function auditTarget(e) {
   if (e.action === "image.remove") return `<span class="mono">${esc(e.target.replace("sha256:", "").slice(0, 12))}</span>`;
   return `<span class="mono">${esc(e.target)}</span>`;
 }
-const auditWho = e => `<b>${esc(e.user || "anonymous")}</b><span class="muted" style="font-size:12px;display:block">${esc(e.client || "")}${e.ip ? " · " + esc(e.ip) : ""}</span>`;
+const auditWho = e => `<b>${esc(e.user || "anonymous")}</b>${e.via === "token" ? ' <span class="stk" style="padding:0 5px">token</span>' : ""}<span class="muted" style="font-size:12px;display:block">${esc(e.client || "")}${e.ip ? " · " + esc(e.ip) : ""}</span>`;
 const auditResult = e => `<span class="pill ${e.ok ? "s-ok" : "s-bad"}">${e.ok ? "Done" : "Failed"}</span>${e.message ? `<span class="muted" style="font-size:12px;display:block;margin-top:4px">${esc(e.message)}</span>` : ""}`;
 
 async function loadAudit() {
@@ -836,6 +844,59 @@ function historyHtml() {
   if (!mine.length) return `<span class="muted">No actions on this container through the dashboard yet.</span>`;
   return `<ol class="events">${mine.map(e => `<li><span class="t">${esc(clock(e.ts))}</span><span class="d" style="background:${e.ok ? "var(--ok)" : "var(--bad)"}"></span>
     <span><strong>${esc(VERB[e.action] || e.action)}</strong> by ${esc(e.user || "anonymous")} <span class="muted">(${esc(e.client)}${e.ip ? " · " + esc(e.ip) : ""})</span>${e.ok ? "" : ` · <span style="color:var(--accent-ink)">${esc(e.message || "failed")}</span>`}</span></li>`).join("")}</ol>`;
+}
+
+/* ---------- access: API tokens for scripts and agents ---------- */
+const SCOPES = [
+  ["read", "Read", "See containers, logs, stats, images and stacks. Changes nothing."],
+  ["operate", "Operate", "Also start, stop, restart, pause and run stack actions."],
+  ["admin", "Admin", "Also remove, pull and prune, read the audit log and manage tokens."],
+];
+async function loadTokens() {
+  try { S.tokens = await api("/api/tokens"); if (S.view === "access") render(); } catch (e) { S.tokens = { error: e.message }; if (S.view === "access") render(); }
+}
+function viewAccess() {
+  const T = S.tokens, origin = location.origin;
+  const head = `<header class="ph"><div><div class="kick">API tokens${S.self?.audit ? "" : ""}</div><h1>Access</h1></div></header>`;
+  const intro = `<section class="card mood"><span class="badge ok" aria-hidden="true">✓</span><div class="txt"><strong>Keys for scripts and AI agents</strong>
+    <span class="muted">A token lets a script, a CLI or an AI agent use this dashboard's API without your password. Each token has a scope, can expire, and appears by name in Activity. Only a fingerprint (SHA-256) is stored; the token itself is shown once.</span></div></section>`;
+  if (!T) return head + intro + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  if (T.error) return head + intro + `<div class="card"><span class="muted">${esc(T.error)}</span></div>`;
+  if (!T.enabled) return head + intro + `<section class="card mood"><span class="badge" aria-hidden="true">!</span><div class="txt"><strong>Tokens are off</strong>
+    <span class="muted">Tokens are stored next to the audit log, which is off. Start with <code>--audit-file /path/audit.jsonl</code> to enable both.</span></div></section>`;
+  const nt = S.newToken;
+  const fresh = nt ? `<section class="card" style="border-color:var(--accent);outline:3px solid var(--accent);outline-offset:-1px">
+      <h2 style="color:var(--accent-ink)">Copy this token now · it will not be shown again</h2>
+      <div class="doc" style="all:unset;display:block;margin-top:12px">
+        <div class="code" style="display:flex;background:var(--console);margin-bottom:10px"><pre style="background:var(--console);color:var(--console-fg);padding:14px 16px;margin:0;flex:1;overflow-x:auto;font-family:var(--mono)"><code>${esc(nt.token)}</code></pre><button class="copy" data-copycode>Copy</button></div>
+        <div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:12px 0 6px">Try it</div>
+        <div class="code" style="display:flex;background:var(--console)"><pre style="background:var(--console);color:var(--console-fg);padding:14px 16px;margin:0;flex:1;overflow-x:auto;font-family:var(--mono)"><code>export CONTRAIRE_TOKEN='${esc(nt.token)}'
+curl -s -H "Authorization: Bearer $CONTRAIRE_TOKEN" ${esc(origin)}/api/containers${nt.scope !== "read" ? `
+curl -s -X POST -H "Authorization: Bearer $CONTRAIRE_TOKEN" ${esc(origin)}/api/containers/&lt;name&gt;/restart` : ""}</code></pre><button class="copy" data-copycode>Copy</button></div>
+      </div>
+      <div style="margin-top:12px"><button class="btn sm" id="tok-dismiss">I've stored it safely</button></div></section>` : "";
+  const form = `<section class="card"><h2>New token</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:16px;margin-top:14px">
+      <label style="display:flex;flex-direction:column;gap:6px"><span class="muted" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Name</span>
+        <span class="field" style="flex:none"><input type="text" id="tok-name" placeholder="e.g. claude-laptop" maxlength="64" spellcheck="false"></span></label>
+      <label style="display:flex;flex-direction:column;gap:6px"><span class="muted" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Expires</span>
+        <select id="tok-days" class="field" style="flex:none"><option value="0">Never</option><option value="1">In 1 day</option><option value="7">In 7 days</option><option value="30" selected>In 30 days</option><option value="90">In 90 days</option><option value="365">In 1 year</option></select></label>
+    </div>
+    <fieldset style="border:0;padding:0;margin:16px 0 0"><legend class="muted" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Scope</legend>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))">${SCOPES.map(([k, l, d], i) => `
+        <label class="scope-opt" style="margin-left:${i ? "-2px" : "0"}"><input type="radio" name="tok-scope" value="${k}" ${k === "operate" ? "checked" : ""}><span><b>${l}</b><span class="muted" style="display:block;font-size:12.5px">${d}</span></span></label>`).join("")}</div></fieldset>
+    <div style="margin-top:16px"><button class="btn primary" id="tok-create">Create token</button></div></section>`;
+  const now = Date.now() / 1000;
+  const list = `<div class="table"><div class="scroll"><div class="tr th tok-tr"><span>Name</span><span>Scope</span><span>Created</span><span>Last used</span><span>Expires</span><span></span></div>
+    ${T.tokens.length ? T.tokens.map(t => {
+      const expired = t.expires && t.expires <= now;
+      return `<div class="tr tok-tr" style="cursor:default"><span><b>${esc(t.name)}</b><span class="mono muted" style="font-size:11.5px;display:block">ctr_${esc(t.id)}_…</span></span>
+        <span class="pill ${t.scope === "admin" ? "s-bad" : t.scope === "operate" ? "s-warn" : "s-ok"}">${esc(t.scope)}</span>
+        <span class="muted">${ago(t.created)}</span><span class="muted">${t.last_used ? ago(t.last_used) : "never"}</span>
+        <span>${t.expires ? (expired ? '<span class="pill s-bad">expired</span>' : `<span class="muted">${esc(new Date(t.expires * 1000).toLocaleDateString())}</span>`) : '<span class="muted">never</span>'}</span>
+        <span class="acts"><button class="btn sm danger" data-revoke="${esc(t.id)}" data-name="${esc(t.name)}">Revoke</button></span></div>`;
+    }).join("") : `<div class="empty">${BOAT()}<strong>No tokens yet</strong><span class="muted">Create one above for a script, a CLI or an AI agent.</span></div>`}</div></div>`;
+  return head + intro + fresh + form + list;
 }
 
 function viewAbout() {
@@ -1307,7 +1368,7 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access"].includes(v) ? v : "containers";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
@@ -1319,6 +1380,8 @@ function route() {
   render();
   if (view === "container") loadDetail();
   if (view === "activity" || view === "container") loadAudit();
+  if (view === "access") loadTokens();
+  if (view !== "access") S.newToken = null;
   window.scrollTo({ top: 0 });
 }
 
@@ -1343,7 +1406,7 @@ function render(soft) {
     if (c) $("#c-head").innerHTML = containerHead(c);
     return;
   }
-  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, container: viewContainer }[S.view]();
+  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, container: viewContainer }[S.view]();
   // Keep the search box's focus and caret across re-renders, so typing isn't interrupted.
   const q = document.activeElement?.id === "q" ? $("#q") : null;
   const pos = q?.selectionStart;
@@ -1409,6 +1472,20 @@ document.addEventListener("click", async e => {
     const dl = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([text + "\n"], { type: "text/plain" })), download: `${c ? cname(c) : "container"}.log` });
     dl.click(); setTimeout(() => URL.revokeObjectURL(dl.href), 1000);
     return;
+  }
+  if (e.target.closest("#tok-create")) {
+    const name = $("#tok-name").value.trim(), scope = document.querySelector('input[name="tok-scope"]:checked')?.value, days = +$("#tok-days").value;
+    if (!name) { $("#tok-name").focus(); return toast("Give the token a name, e.g. claude-laptop", true); }
+    try { S.newToken = await api("/api/tokens", { method: "POST", body: JSON.stringify({ name, scope, days }) }); await loadTokens(); window.scrollTo({ top: 0 }); }
+    catch (err) { toast(err.message, true); }
+    return;
+  }
+  if (e.target.closest("#tok-dismiss")) { S.newToken = null; return render(); }
+  const rv = e.target.closest("[data-revoke]");
+  if (rv) {
+    if (!await ask({ title: `Revoke ${rv.dataset.name}?`, text: "Anything using this token stops working immediately.", ok: "Revoke", danger: true })) return;
+    try { await api(`/api/tokens/${rv.dataset.revoke}`, { method: "DELETE" }); toast(`${rv.dataset.name} revoked`); } catch (err) { toast(err.message, true); }
+    return loadTokens();
   }
   if (e.target.closest("#pull")) return pullImage();
   if (e.target.closest("#prune")) return pruneImages();

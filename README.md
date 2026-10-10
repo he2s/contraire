@@ -32,6 +32,17 @@ On Fedora/RHEL with SELinux enforcing, add `--security-opt label=disable` (or un
 
 > **Security:** whoever controls the Docker socket controls the machine. When the port is reachable from your network, set a password with `--password-file` or `CONTRAIRE_PASSWORD`. The server warns at startup if you don't.
 
+## API access for scripts and agents
+
+Create a token on the **Access** page, choosing a scope (`read`, `operate` or `admin`) and an optional expiry. Then:
+
+```sh
+curl -H "Authorization: Bearer $CONTRAIRE_TOKEN" http://pi.local:8083/api/containers
+curl -X POST -H "Authorization: Bearer $CONTRAIRE_TOKEN" http://pi.local:8083/api/containers/web/restart
+```
+
+Every action is recorded in **Activity** under the token's name. Revoking a token takes effect immediately.
+
 ## Options
 
 | Flag | Environment | Default |

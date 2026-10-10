@@ -105,6 +105,12 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - Past 1 MB the file is renamed to `.1`, which bounds it to about 2 MB on disk.
   - `/api/audit?limit=&target=` returns entries newest first.
   - Any new mutating route must be added to `audit_subject`, otherwise it goes unrecorded.
+- **`src/tokens.rs`:** API tokens for scripts and agents, sent as `Authorization: Bearer ctr_<id>_<secret>`.
+  - Only a SHA-256 of each token is stored, in `tokens.json` next to the audit log (mode 0600, replaced atomically on write).
+  - SHA-256 and the random source (`/dev/urandom`) are hand-written, so no new dependencies.
+  - Scopes are `read` < `operate` < `admin`, mapped from method and path by `required_scope` in `main.rs`.
+  - The token table sits behind an `RwLock<Arc<Vec<Token>>>`. This is the one deliberate lock in the server: it is read on every request but written only on create or revoke. `last_used` is a per-token atomic.
+  - Tokens require the audit log's state directory; with `--audit-file off`, tokens are off too.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/main.rs`:** holds `App`: the auth check, the CSRF check, and routing by `match` on `(method, path segments)`.
   - Most routes are thin proxies to the Docker API.
@@ -134,7 +140,9 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
 
 **Security invariants. Keep these when adding routes:**
 - Every path segment that is interpolated into a Docker API path goes through `valid_id`, which blocks traversal. Query values go through `http::url_encode`.
-- Every non-GET request needs the `X-Contraire` header. That is the CSRF defence: cross-origin pages can't send a custom header without a CORS preflight, and the server never answers preflights. The frontend's `api()` wrapper adds the header.
+- Every route needs a scope in `required_scope`. The fallback is `admin`, so a new route is safe by default; lower it deliberately. Denied attempts are audited.
+- Identity comes from exactly one source: a bearer token, the Basic-auth password, or open access when no password is set. Password and open access act as `admin`.
+- Every non-GET browser request needs the `X-Contraire` header. Bearer requests skip this check, because browsers never send bearer tokens on their own. That is the CSRF defence: cross-origin pages can't send a custom header without a CORS preflight, and the server never answers preflights. The frontend's `api()` wrapper adds the header.
 - The default bind is all interfaces (`0.0.0.0:8083`). Access to the Docker socket is root-equivalent, so the server warns at startup when it is network-reachable without a password.
 - The UI renders untrusted strings (container names, labels, logs). Anything put into `innerHTML` must go through `esc()`.
 

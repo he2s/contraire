@@ -6,6 +6,7 @@ mod compose;
 mod docker;
 mod http;
 mod live;
+mod tokens;
 
 use std::net::TcpListener;
 use std::sync::Arc;
@@ -28,6 +29,7 @@ struct App {
     audit: audit::Audit,
     /// The Basic-auth user, when a password is configured.
     user: Option<String>,
+    tokens: tokens::Store,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
@@ -60,12 +62,15 @@ fn main() {
         std::process::exit(2);
     });
     let active = Arc::new(AtomicUsize::new(0));
+    let audit = audit::Audit::open(&cfg.audit, |k| std::env::var(k).ok());
+    let token_store = tokens::Store::open(audit.path().and_then(|p| p.parent()).map(|d| d.join("tokens.json")));
     let app = Arc::new(App {
         docker,
         auth,
         docs_url: cfg.docs_url,
-        audit: audit::Audit::open(&cfg.audit, |k| std::env::var(k).ok()),
+        audit,
         user: cfg.password.is_some().then(|| cfg.user.clone()),
+        tokens: token_store,
         listen: cfg.listen.clone(),
         started: std::time::Instant::now(),
         started_unix: unix_now(),
@@ -76,7 +81,10 @@ fn main() {
     eprintln!("contraire: {DISPLAY_NAME} listening on http://{} (docker: {})", cfg.listen, app.docker.describe());
     match app.audit.path() {
         Some(p) => eprintln!("contraire: audit log: {}", p.display()),
-        None => eprintln!("contraire: audit log: off"),
+        None => eprintln!("contraire: audit log: off (API tokens need it too)"),
+    }
+    if let Some(p) = app.tokens.path() {
+        eprintln!("contraire: API tokens: {} ({} defined)", p.display(), app.tokens.len());
     }
     let loopback = listener.local_addr().is_ok_and(|a| a.ip().is_loopback());
     if !loopback && app.auth.is_none() {
@@ -132,6 +140,27 @@ fn proc_cpu_seconds() -> Option<f64> {
     Some(ticks / 100.0)
 }
 
+struct Identity {
+    name: Option<String>,
+    /// "token", "password" or "open".
+    via: &'static str,
+    scope: tokens::Scope,
+}
+
+/// Least privilege: reading needs `read`; day-to-day operations (start, stop, restart,
+/// pause, stack actions) need `operate`; anything destructive or about access needs `admin`.
+fn required_scope(req: &Request) -> tokens::Scope {
+    use tokens::Scope::*;
+    let segs: Vec<&str> = req.path.trim_matches('/').split('/').collect();
+    match (req.method.as_str(), segs.as_slice()) {
+        (_, ["api", "tokens", ..]) | (_, ["api", "audit"]) => Admin,
+        ("GET" | "HEAD", _) => Read,
+        ("POST", ["api", "containers", _, "start" | "stop" | "restart" | "pause" | "unpause"]) => Operate,
+        ("POST", ["api", "projects", _, _]) => Operate,
+        _ => Admin,
+    }
+}
+
 /// What a mutating request does, for the audit log: (`kind.verb`, target).
 fn audit_subject(req: &Request) -> Option<(String, String)> {
     if matches!(req.method.as_str(), "GET" | "HEAD") {
@@ -152,6 +181,14 @@ fn audit_subject(req: &Request) -> Option<(String, String)> {
         ("POST", ["api", "images", "prune"]) => ("image.prune".into(), "dangling".into()),
         ("DELETE", ["api", "images", id]) => ("image.remove".into(), id.to_string()),
         ("POST", ["api", "projects", name, verb]) => (format!("project.{verb}"), name.to_string()),
+        ("POST", ["api", "tokens"]) => {
+            let name = serde_json::from_slice::<Value>(&req.body)
+                .ok()
+                .and_then(|v| v.get("name")?.as_str().map(|s| s.chars().take(64).collect()))
+                .unwrap_or_default();
+            ("token.create".into(), name)
+        }
+        ("DELETE", ["api", "tokens", id]) => ("token.revoke".into(), id.to_string()),
         _ => return None,
     })
 }
@@ -170,27 +207,50 @@ fn valid_id(s: &str) -> bool {
 impl App {
     fn handle(&self, req: &Request) -> Response {
         self.requests.fetch_add(1, Ordering::Relaxed);
-        if let Some(expected) = &self.auth {
-            let given = req.header("authorization").unwrap_or("");
-            if !http::ct_eq(given.as_bytes(), expected.as_bytes()) {
-                return Response::error(401, "authentication required")
-                    .with_header("WWW-Authenticate", "Basic realm=\"contraire\", charset=\"UTF-8\"");
+        let bearer = req.header("authorization").and_then(|h| h.strip_prefix("Bearer ")).map(str::trim);
+        let who = match bearer {
+            Some(t) => match self.tokens.check(t, unix_now()) {
+                tokens::Check::Valid { name, scope } => Identity { name: Some(name), via: "token", scope },
+                tokens::Check::Invalid => return Response::error(401, "invalid, revoked or expired API token"),
+            },
+            None => {
+                if let Some(expected) = &self.auth {
+                    let given = req.header("authorization").unwrap_or("");
+                    if !http::ct_eq(given.as_bytes(), expected.as_bytes()) {
+                        return Response::error(401, "authentication required")
+                            .with_header("WWW-Authenticate", "Basic realm=\"contraire\", charset=\"UTF-8\"");
+                    }
+                }
+                let via = if self.auth.is_some() { "password" } else { "open" };
+                Identity { name: self.user.clone(), via, scope: tokens::Scope::Admin }
             }
-        }
-        // CSRF guard: a custom header can't be sent cross-origin without a CORS preflight,
-        // which we never answer.
-        if !matches!(req.method.as_str(), "GET" | "HEAD") && req.header("x-contraire").is_none() {
+        };
+        // CSRF guard for browser sessions: a custom header can't be sent cross-origin without
+        // a CORS preflight, which we never answer. Bearer tokens are never sent implicitly.
+        if bearer.is_none() && !matches!(req.method.as_str(), "GET" | "HEAD") && req.header("x-contraire").is_none() {
             return Response::error(403, "missing X-Contraire header");
+        }
+        let need = required_scope(req);
+        if who.scope < need {
+            let res = Response::error(
+                403,
+                &format!("token scope '{}' does not allow this (needs '{}')", who.scope.as_str(), need.as_str()),
+            );
+            // Denied attempts belong on the record too.
+            if let Some((action, target)) = audit_subject(req) {
+                self.audit.record(&self.audit_entry(req, &who, &action, &target, &res, Duration::ZERO));
+            }
+            return res;
         }
         let started = std::time::Instant::now();
         let res = self.route(req).unwrap_or_else(|e| Response::error(502, &format!("docker: {e}")));
         if let Some((action, target)) = audit_subject(req) {
-            self.audit.record(&self.audit_entry(req, &action, &target, &res, started.elapsed()));
+            self.audit.record(&self.audit_entry(req, &who, &action, &target, &res, started.elapsed()));
         }
         res
     }
 
-    fn audit_entry(&self, req: &Request, action: &str, target: &str, res: &Response, took: Duration) -> Value {
+    fn audit_entry(&self, req: &Request, who: &Identity, action: &str, target: &str, res: &Response, took: Duration) -> Value {
         let body: Value = serde_json::from_slice(&res.body).unwrap_or_default();
         let failed = body.get("failed").and_then(Value::as_array).filter(|f| !f.is_empty());
         let message = body.get("message").and_then(Value::as_str).map(str::to_string).or_else(|| {
@@ -209,8 +269,9 @@ impl App {
             "status": res.status,
             "message": message,
             "ms": took.as_millis() as u64,
-            // Basic auth has exactly one account; without a password nobody is identified.
-            "user": self.user,
+            // Token name, the Basic-auth user, or nobody when the dashboard is open.
+            "user": who.name,
+            "via": who.via,
             "ip": req.peer.map(|p| p.to_string()),
             "client": audit::client_kind(req.header("user-agent")),
         })
@@ -245,6 +306,17 @@ impl App {
                 });
                 Response::json(200, body.to_string()).with_header("Cache-Control", "no-store")
             }
+            ("GET", ["api", "tokens"]) => Response::json(
+                200,
+                json!({ "enabled": self.tokens.path().is_some(), "tokens": self.tokens.list() }).to_string(),
+            )
+            .with_header("Cache-Control", "no-store"),
+            ("POST", ["api", "tokens"]) => self.create_token(&req.body),
+            ("DELETE", ["api", "tokens", id]) => match self.tokens.revoke(id) {
+                Ok(true) => Response::new(204, "application/json", ""),
+                Ok(false) => Response::error(404, "no such token"),
+                Err(e) => Response::error(500, &e),
+            },
             ("GET", ["api", "self"]) => Response::json(200, self.telemetry().to_string()).with_header("Cache-Control", "no-store"),
             ("GET", ["api", "events"]) => {
                 // Recent history for the events panel; the live tail comes over /api/stream.
@@ -318,6 +390,7 @@ impl App {
             "docker": self.docker.describe(),
             "auth": self.auth.is_some(),
             "audit": self.audit.path().map(|p| p.display().to_string()),
+            "tokens": self.tokens.path().map(|_| self.tokens.len()),
             "started": self.started_unix,
             "uptime": self.started.elapsed().as_secs(),
             "cpu_seconds": proc_cpu_seconds(),
@@ -328,6 +401,27 @@ impl App {
             "connections": self.active.load(Ordering::Relaxed),
             "requests": self.requests.load(Ordering::Relaxed),
         })
+    }
+
+    fn create_token(&self, body: &[u8]) -> Response {
+        let v: Value = serde_json::from_slice(body).unwrap_or_default();
+        let name: String = v.get("name").and_then(Value::as_str).unwrap_or("").trim().chars().take(64).collect();
+        if name.is_empty() || name.chars().any(char::is_control) {
+            return Response::error(400, "a token needs a name, e.g. 'claude-laptop'");
+        }
+        let Some(scope) = v.get("scope").and_then(Value::as_str).and_then(tokens::Scope::parse) else {
+            return Response::error(400, "scope must be read, operate or admin");
+        };
+        let now = unix_now();
+        let expires = v.get("days").and_then(Value::as_u64).filter(|d| *d > 0).map(|d| now + d.min(3650) * 86_400);
+        match self.tokens.create(&name, scope, expires, now) {
+            // The secret appears in this response only; it is never stored or logged.
+            Ok((mut record, secret)) => {
+                record["token"] = json!(secret);
+                Response::json(201, record.to_string()).with_header("Cache-Control", "no-store")
+            }
+            Err(e) => Response::error(409, &e),
+        }
     }
 
     fn proxy(&self, method: &str, path: &str) -> std::io::Result<Response> {
@@ -403,5 +497,30 @@ impl App {
             Some(e) => Response::error(500, &e),
             None => Response::json(200, json!({ "image": image }).to_string()),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokens::Scope::*;
+
+    fn req(method: &str, path: &str) -> Request {
+        let raw = format!("{method} {path} HTTP/1.1\r\n\r\n");
+        http::parse_for_test(raw.as_bytes())
+    }
+
+    #[test]
+    fn scopes_follow_least_privilege() {
+        assert_eq!(required_scope(&req("GET", "/api/containers")), Read);
+        assert_eq!(required_scope(&req("GET", "/api/containers/x/logs")), Read);
+        assert_eq!(required_scope(&req("POST", "/api/containers/x/restart")), Operate);
+        assert_eq!(required_scope(&req("POST", "/api/projects/shop/stop")), Operate);
+        assert_eq!(required_scope(&req("POST", "/api/containers/x/kill")), Admin);
+        assert_eq!(required_scope(&req("DELETE", "/api/containers/x")), Admin);
+        assert_eq!(required_scope(&req("POST", "/api/images/pull")), Admin);
+        assert_eq!(required_scope(&req("POST", "/api/containers/prune")), Admin);
+        assert_eq!(required_scope(&req("GET", "/api/tokens")), Admin);
+        assert_eq!(required_scope(&req("GET", "/api/audit")), Admin);
     }
 }

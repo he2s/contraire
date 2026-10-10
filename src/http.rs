@@ -255,6 +255,11 @@ pub fn url_encode(s: &str) -> String {
 }
 
 #[cfg(test)]
+pub fn parse_for_test(raw: &[u8]) -> Request {
+    read_request(&mut &raw[..]).unwrap().unwrap()
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
