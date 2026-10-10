@@ -17,7 +17,7 @@ FROM --platform=$BUILDPLATFORM ${ZIGBUILD_IMAGE} AS build
 ARG TARGETS="x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf x86_64-pc-windows-gnu"
 RUN rustup target add $TARGETS
 WORKDIR /src
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml Cargo.lock build.rs ./
 COPY src src
 COPY static static
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
