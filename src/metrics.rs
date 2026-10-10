@@ -93,7 +93,7 @@ pub struct Store {
     host: Rings,
     pub root: Option<PathBuf>,
     samples: AtomicU64,
-    /// Nanoseconds the last sampling pass took (self-telemetry).
+    /// Nanoseconds the last sampling pass took (shown on This dashboard).
     pub last_pass_ns: AtomicU64,
 }
 

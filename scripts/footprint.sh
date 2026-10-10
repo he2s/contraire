@@ -104,7 +104,7 @@ info "RSS with $((STREAMS + 1)) streams" "$(status VmRSS)" KB
 kill "${STREAM_PIDS[@]}" 2>/dev/null || true
 STREAM_PIDS=()
 if [ $QUICK = 0 ]; then
-  sleep 17 # relay threads notice closed clients within one 15 s idle tick
+  sleep 17 # a closed tab's threads end within about 7 s (2 s peek + 5 s relay read); 17 s leaves margin
   row "threads after streams closed" "$(status Threads)" $((THREADS_IDLE + 1)) ""
 fi
 row "peak RSS (VmHWM)" "$(status VmHWM)" $B_PEAK_RSS KB

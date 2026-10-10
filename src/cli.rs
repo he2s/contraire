@@ -71,7 +71,7 @@ const OPTS: &[Opt] = &[
         value: Some("URL"),
         env: Some("CONTRAIRE_DOCS_URL"),
         default: Some(DOCS_URL),
-        help: "Where the Learn tab loads its content from (fetched by the browser)",
+        help: "Where the Learn page loads its content from (fetched by the browser)",
     },
     Opt {
         short: None,
@@ -79,7 +79,7 @@ const OPTS: &[Opt] = &[
         value: Some("PATH"),
         env: Some("CONTRAIRE_AUDIT_FILE"),
         default: Some("auto"),
-        help: "Append-only log of every change (auto: $STATE_DIRECTORY or ~/.local/state/contraire; off)",
+        help: "Audit log; its folder also holds tokens, incidents and saved metrics (auto: $STATE_DIRECTORY, $XDG_STATE_HOME/contraire or ~/.local/state/contraire; off)",
     },
     Opt {
         short: None,
@@ -130,7 +130,8 @@ fn help() -> String {
     }
     s.push_str(
         "\nClient mode (run on your workstation against a server):\n  \
-         contraire ps | inspect | logs | start | stop | restart | stacks | stack | events | activity | info\n  \
+         contraire init | ps | top | inspect | logs | patterns | incidents | incident | start | stop | restart\n  \
+         contraire pause | unpause | stacks | stack | events | activity | info | services | service | export\n  \
          contraire mcp        MCP server on stdio for Claude Code and other agents\n  \
          contraire ps --help  details\n",
     );

@@ -10,8 +10,14 @@ services:
     volumes:
       # Control of the Docker socket is root-equivalent on this host.
       - /var/run/docker.sock:/var/run/docker.sock
-      # Audit log of every change made through the dashboard (bounded, about 2 MB).
+      # State folder: audit log (≤ 2 MB), API tokens, incident postmortems (≤ 100) and minute metrics (≤ 4 MB).
       - contraire-state:/state
+      # Per-container CPU and memory come straight from the host's cgroup files.
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    # Needed to see the host's cgroups and container processes (network counters).
+    # The socket above already gives full control of the host, so this adds no power.
+    cgroup: host
+    pid: host
     environment:
       # Strongly recommended when the port is reachable from your network:
       # CONTRAIRE_PASSWORD: change-me

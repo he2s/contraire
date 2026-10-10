@@ -44,7 +44,10 @@ Start read-only. These are cheap and safe:
 ```sh
 contraire ps                         # everything, with plain-language status
 contraire top                        # CPU, memory, network, disk per container, busiest first
-contraire stacks                     # compose stacks and which services need attention
+contraire stacks                     # Compose stacks and which services need attention
+contraire patterns <name>            # its whole log as counted patterns, errors first (--new: only since start)
+contraire incidents                  # incidents: crashes the flight recorder caught, with postmortems
+contraire services                   # telemetry: requests, errors, latency per service (if apps send OpenTelemetry)
 contraire inspect <name>             # state, health streak, exit code explained, restarts, ports, mounts, depends_on
 contraire logs <name> -n 200         # recent output (stdout + stderr)
 contraire events --since 60          # starts, stops with exit codes, OOM kills, health changes
@@ -111,14 +114,17 @@ Quote at most a few log lines; the decisive one beats a wall of output. Say when
 
 | Command | Does | Scope |
 |---|---|---|
-| `contraire ps` / `stacks` / `info` | Overview | read |
+| `contraire ps` / `stacks` / `info` / `top` | Overview, resource use now | read |
 | `contraire inspect <c>` | Details, exit-code hint, depends_on | read |
 | `contraire logs <c> [-n N] [-t] [-f]` | Logs (stdout+stderr) | read |
 | `contraire events [--since MIN]` | Docker events | read |
-| `contraire services` / `service <name>` | OpenTelemetry: requests, errors, latency per service | read |
-| `contraire export metrics\|telemetry [--csv]` | Last hour(s) as JSON lines or CSV | read |
+| `contraire patterns <c> [--new]` | The whole log as counted patterns | read |
+| `contraire incidents` / `incident <id>` | Incidents and their postmortems | read |
+| `contraire services` / `service <name>` | Telemetry: requests, errors, latency per service | read |
+| `contraire export metrics\|telemetry [--csv]` | Metrics (24 h) or telemetry (1 h), per minute, as JSON lines or CSV | read |
 | `contraire start\|stop\|restart\|pause\|unpause <c>` | One container | operate |
 | `contraire stack <name> start\|stop\|restart` | Whole stack, dependency order | operate |
 | `contraire activity [-n N]` | Audit log | admin |
+| `contraire init <dir>` | New session folder (run by the user, not by you) | read |
 
 There is deliberately no remove, prune or pull command. Those belong in the dashboard, with a person clicking.

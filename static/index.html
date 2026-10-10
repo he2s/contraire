@@ -533,7 +533,7 @@ h1 .help { width: 22px; height: 22px; font-size: 13px; position: relative; top: 
 <body>
 <div class="app">
   <nav class="side" aria-label="Main">
-    <a class="brand" href="#containers">
+    <a class="brand" href="#overview">
       <span class="mark" id="mark" aria-hidden="true">m</span>
       <span style="min-width:0"><b id="brand" lang="de">&nbsp;</b><small>Docker · one host</small></span>
     </a>
@@ -545,14 +545,14 @@ h1 .help { width: 22px; height: 22px; font-size: 13px; position: relative; top: 
 
     <div class="nav">
       <span class="navlabel">Manage</span>
-      <a href="#overview" data-nav="overview" data-hint="Everything at once: what needs a look, host load, busy containers, log errors, app health, crashes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15v2M11 11v6M15 7v10M19 12v5"/></svg><span>Overview</span><span class="count" id="n-ov">–</span></a>
+      <a href="#overview" data-nav="overview" data-hint="Everything at once: what needs a look, host load, busy containers, log errors, telemetry, incidents"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15v2M11 11v6M15 7v10M19 12v5"/></svg><span>Overview</span><span class="count" id="n-ov">–</span></a>
       <a href="#containers" data-nav="containers" data-hint="Every container on this host, with live status, resources and actions"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
-      <a href="#stacks" data-nav="stacks" data-hint="Docker Compose projects: start, stop or restart a whole stack in dependency order"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
+      <a href="#stacks" data-nav="stacks" data-hint="Compose stacks: start, stop or restart a whole stack in dependency order"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
       <a href="#images" data-nav="images" data-hint="Images on disk: what uses them, how big they are, pull and clean up"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
       <a href="#incidents" data-nav="incidents" data-hint="Crashes caught by the flight recorder, with a postmortem each"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><span>Incidents</span><span class="count" id="n-inc">–</span></a>
       <a href="#telemetry" data-nav="telemetry" data-hint="Requests, errors and slow calls your own apps report over OpenTelemetry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span>Telemetry</span><span class="count" id="n-tel">–</span></a>
       <a href="#activity" data-nav="activity" data-hint="Who changed what through this dashboard, and whether it worked"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
-      <a href="#learn" data-nav="learn" data-hint="Short illustrated lessons on containers, Linux and Compose, loaded from GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
+      <a href="#learn" data-nav="learn" data-hint="Short illustrated lessons on containers, images, Linux, networking, data, Compose and the Pi, loaded from GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
       <a href="#cheatsheet" data-nav="cheatsheet" data-hint="Every CLI command and the Claude Code / MCP setup on one page"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
       <a href="#access" data-nav="access" data-hint="API tokens for scripts and AI agents, with scopes and expiry"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 20 3M16 7l3 3M14 9l2 2"/></svg><span>Access</span></a>
       <a href="#about" data-nav="about" data-hint="What this dashboard itself costs: memory, CPU, disk, threads"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg><span>This dashboard</span></a>
@@ -699,17 +699,16 @@ function ask({ title, text, ok = "Confirm", danger, extra = "" }) {
    The page ships gzip-compressed, so this text costs ~1/3 of its size in the binary. */
 const HELP = {
   "containers": ["Containers", "Every container on this Docker host. Status, CPU and memory update live: Docker <em>pushes</em> events to the page instead of the page polling. Click a row for logs, patterns, history and details."],
-  "stacks": ["Stacks", "Docker Compose projects, recognized from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
+  "stacks": ["Stacks", "Compose projects (stacks), recognized from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
   "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
   "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
   "overview": ["Overview", "Every signal this dashboard collects, on one page: Docker's own status, CPU and memory from cgroups and <code>/proc</code>, errors mined from every log, crash postmortems and, if your apps send them, OpenTelemetry traces. The list at the top is plain rules over those numbers, never a guess, and each line names its source."],
   "busiest containers": ["Busiest containers", "Ranked by CPU right now (100% = one full core), with the last 5 minutes as bars and current memory. Click for the container's history."],
   "errors in the logs": ["Errors in the logs", "Containers whose log has lines mentioning errors, panics, exceptions or failures, as a count of all lines since start. <b>New</b> means kinds of error that first appeared after startup, usually the interesting ones."],
-  "app health": ["App health", "Services reporting OpenTelemetry traces: error rate and 95th percentile latency over the last hour, with requests per minute as bars."],
-  "recent crashes": ["Recent crashes", "Postmortems from the flight recorder, newest first."],
+  "recent incidents": ["Recent incidents", "Crashes the flight recorder caught, newest first; each has a postmortem. The full list is on the Incidents page."],
   "host cpu": ["Host CPU", "Share of all cores in use, from <code>/proc/stat</code> every 10 s, last hour. Load is the number of tasks running or waiting; above the core count, things queue."],
   "host memory": ["Host memory", "Memory in use (total minus available, from <code>/proc/meminfo</code>), last hour, and the host's network traffic."],
-  "telemetry": ["Telemetry", "Your own apps can report how they're doing over OpenTelemetry (OTLP/HTTP): traces become requests per minute, error rate and latency per service, logs become patterns. Kept in memory for an hour in fixed-size rings (about 2 KB per service), never on disk. Optionally forwarded on to another collector with <code>--otlp-forward</code>."],
+  "telemetry": ["Telemetry", "Your own apps can report how they're doing over OpenTelemetry (OTLP/HTTP): traces become requests per minute, error rate and latency per service, logs become patterns. Kept in memory for an hour in fixed-size rings (about 10 KB per service plus 2 KB per operation, at most 64 services), never on disk. Optionally forwarded on to another collector with <code>--otlp-forward</code>."],
   "service": ["Service", "The <code>service.name</code> an app reports itself as. Click a row for its operations, failed and slowest requests, and log patterns."],
   "requests/min": ["Requests/min", "Incoming requests (server and consumer spans) per minute, averaged over the last 5 minutes. Calls a service makes to others count for those others."],
   "errors": ["Errors", "The share of requests in the last hour whose span status is <i>error</i>. Red from 5%."],
@@ -720,10 +719,10 @@ const HELP = {
   "slowest requests": ["Slowest requests", "The slowest requests of the last hour. The trace ID finds the full trace in your tracing tool."],
   "send telemetry here": ["Send telemetry here", "OTLP/HTTP with protobuf or JSON on <code>/v1/traces</code>, <code>/v1/logs</code> and <code>/v1/metrics</code>. gRPC and gzip aren't supported, to stay small; Collectors can always send plain HTTP."],
   "activity": ["Activity", "An append-only audit log of every change made through this dashboard, by a person (browser) or a token (script, AI agent), including refused attempts. Bounded to about 2 MB on disk. Changes made with plain <code>docker</code> on the host appear as events, not here."],
-  "access": ["Access", "API tokens let scripts and AI agents use this dashboard without your password. Only a SHA-256 fingerprint is stored; the token is shown once. Scopes: <code>read</code> looks, <code>operate</code> also starts/stops/restarts, <code>admin</code> also removes, prunes and manages tokens."],
+  "access": ["Access", "API tokens let scripts and AI agents use this dashboard without your password. Only a SHA-256 fingerprint is stored; the token is shown once. Scopes: <code>read</code> looks, <code>operate</code> also starts/stops/restarts, <code>admin</code> also pulls, removes and prunes, reads the audit log and manages tokens. Apps sending OpenTelemetry need <code>read</code>."],
   "cheat sheet": ["Cheat sheet", "Every command of the <code>contraire</code> CLI and the Claude Code / MCP setup on one page. Loaded live from GitHub, so it adds nothing to the program; examples use this server's address."],
-  "learn docker": ["Learn", "Short lessons on containers, Linux, networking, data and Compose. Like the cheat sheet they load from GitHub at runtime, so the binary stays tiny."],
-  "this dashboard": ["This dashboard", "What this program itself costs, read from <code>/proc/self</code>: memory, CPU time, the size of its one file, threads and connections. One thread serves each browser tab; idle ones exit within 15 s."],
+  "learn": ["Learn", "Short lessons on installing, containers, images, Linux, networking, data, Compose and the Raspberry Pi, plus a Docker cheat sheet. Like the Cheat sheet page they load from GitHub at runtime, so the binary stays tiny."],
+  "this dashboard": ["This dashboard", "What this program itself costs, read from <code>/proc/self</code>: memory, CPU time, the size of its one file, threads and connections. One thread serves each browser tab; its threads end within about 7 s of the tab closing."],
   "running": ["Running", "Containers that are up. The bar shows the whole fleet: green running, amber paused, red failed or unhealthy, grey stopped on purpose."],
   "needs attention": ["Needs attention", "Containers that are unhealthy (failing their health check), restarting, or that exited with a non-zero code. Exit code 0 means it finished normally, so those count as stopped, not failed."],
   "images on disk": ["Images on disk", "Total size of all images as Docker reports it. Shared layers are counted once per image here, so the real disk use can be lower."],
@@ -734,15 +733,15 @@ const HELP = {
   "up / since": ["Up / since", "Docker's own summary: how long it has been running, or when it stopped and with which exit code."],
   "actions": ["Actions", "Restart, stop, start, pause/resume or remove. Every action is recorded in Activity. Removing deletes the container and its anonymous data, never named volumes."],
   "recent events": ["Recent events", "What Docker itself reports: starts, stops with their exit codes, out-of-memory kills, health changes, pulls. Pushed to the page as they happen; the last hour is loaded on open. Health-check noise is filtered out by Docker before it reaches us."],
-  "history": ["History", "CPU, memory, network and disk from the cgroup sampler: the last hour at 10-second resolution, or 24 hours as 1-minute averages. Kept in fixed rings of about 50 KB per container: memory use never grows."],
-  "log patterns": ["Log patterns", "Every line this container printed since it started, grouped: numbers, times, IDs and addresses become <code>‹·›</code>, so a million lines shrink to a few dozen patterns with counts. <b>NEW</b> marks patterns that first appeared after startup: often exactly what broke. Runs live inside the dashboard, without allocating memory for known patterns."],
+  "history": ["History", "CPU, memory, network and disk from the cgroup sampler: the last hour at 10-second resolution, or 24 hours as 1-minute averages. Kept in fixed rings of about 50 KB per container: memory use never grows. The minute averages are also saved to disk (at most 4 MB), so the 24 hours survive a restart; minutes while the server was down show as gaps."],
+  "log patterns": ["Log patterns", "Every line this container printed since it started, grouped: numbers, times, IDs and addresses become <code>&lt;*&gt;</code>, so a million lines shrink to a few dozen patterns with counts. <b>NEW</b> marks patterns that first appeared after startup: often exactly what broke. Runs live inside the dashboard, without allocating memory for known patterns."],
   "error patterns": ["Error patterns", "Patterns from lines mentioning errors, panics, exceptions, refusals or failures, with how often each appeared before the crash."],
   "new since it started": ["New since it started", "Patterns that first appeared more than two minutes after the container started: the messages that weren't there when it was healthy."],
   "process": ["Process", "Facts about the running dashboard process, from <code>/proc/self</code> and its own counters."],
   "new token": ["New token", "Give it a name you'll recognize in Activity (e.g. <code>claude-laptop</code>), the smallest scope that does the job, and an expiry. Agents usually need <code>operate</code>: they can restart things but never delete them."],
   "details": ["Details", "Full ID, image, command, ports, networks, mounts, restart policy and, for Compose containers, the stack, service, dependencies and compose file."],
   "environment": ["Environment", "Environment variables often hold passwords and API keys, so they stay hidden until you reveal them. Anyone with access to this dashboard can, though."],
-  "manage": ["This dashboard", "One file of under a megabyte, about 3 MB of memory, no dependencies. The sidebar boxes show the host and the dashboard's own cost live."],
+  "manage": ["This dashboard", "One file of about 1.2 MB, about 4 MB of memory plus 0.2 MB per container, no dependencies. The sidebar boxes show the host and the dashboard's own cost live."],
   "theme": ["Theme", "Light, dark, or follow your system (Auto). Remembered in this browser only."],
   "tabs": ["Container views", "<b>Logs</b>: live output, filter, levels, download. <b>Patterns</b>: the whole log grouped and counted. <b>Live stats</b>: per-second samples from Docker, plus 1 h / 24 h history. <b>Details</b>: configuration and change history. <b>Environment</b>: variables, hidden by default."],
 };
@@ -1067,7 +1066,7 @@ const newErrBadge = c => {
   return n ? `<a class="pill s-bad" href="#c/${esc(c.Id)}" data-stop data-tabjump="patterns" style="height:20px;font-size:11px" title="Error messages that first appeared after the container started">${n} new error${n === 1 ? "" : "s"}</a>` : "";
 };
 /* Highlight the variable parts (<*>) of a pattern. */
-const patternHtml = t => esc(t).replace(/&lt;\*&gt;/g, '<span class="var">‹·›</span>');
+const patternHtml = t => esc(t).replace(/&lt;\*&gt;/g, '<span class="var">&lt;*&gt;</span>');
 async function loadPatterns() {
   const id = S.open, el = $("#d-patterns");
   if (!id || !el) return;
@@ -1140,13 +1139,13 @@ function findings() {
   cs.filter(c => status(c).bucket === "attention").forEach(c => out.push({ src: "Docker", bad: true, text: `<b>${esc(cname(c))}</b> is ${esc(status(c).label.toLowerCase())}`, href: `#c/${esc(c.Id)}`, go: "Open" }));
   const day = Date.now() / 1000 - 86400;
   const seen = new Set();
-  (S.incidents?.incidents || []).filter(i => i.last > day && !seen.has(i.container.name) && seen.add(i.container.name)).slice(0, 4).forEach(i => out.push({ src: "Crash", bad: true, text: `<b>${esc(i.container.name)}</b> ${i.oom_killed ? "ran out of memory" : "exited with code " + i.exit_code}${i.repeats > 1 ? `, ${i.repeats}× in a row` : ""} · ${ago(i.last)}`, href: `#incidents/${esc(i.id)}`, go: "Postmortem" }));
+  (S.incidents?.incidents || []).filter(i => i.last > day && !seen.has(i.container.name) && seen.add(i.container.name)).slice(0, 4).forEach(i => out.push({ src: "Incident", bad: true, text: `<b>${esc(i.container.name)}</b> ${i.oom_killed ? "ran out of memory" : "exited with code " + i.exit_code}${i.repeats > 1 ? `, ${i.repeats}× in a row` : ""} · ${ago(i.last)}`, href: `#incidents/${esc(i.id)}`, go: "Postmortem" }));
   (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.error_rate >= .05).sort((a, b) => b.errors_1h - a.errors_1h).slice(0, 4)
-    .forEach(x => out.push({ src: "Traces", bad: x.error_rate >= .2, text: `<b>${esc(x.service)}</b> fails ${pctTxt(x.error_rate)} of its requests (${x.errors_1h.toLocaleString()} in the last hour)`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Which calls" }));
+    .forEach(x => out.push({ src: "Telemetry", bad: x.error_rate >= .2, text: `<b>${esc(x.service)}</b> fails ${pctTxt(x.error_rate)} of its requests (${x.errors_1h.toLocaleString()} in the last hour)`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Which calls" }));
   (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.p95 > 2000 && x.error_rate < .05).slice(0, 2)
-    .forEach(x => out.push({ src: "Traces", text: `<b>${esc(x.service)}</b> is slow: 1 in 20 requests takes over ${ms(x.p95)}`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Slowest" }));
+    .forEach(x => out.push({ src: "Telemetry", text: `<b>${esc(x.service)}</b> is slow: 1 in 20 requests takes over ${ms(x.p95)}`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Slowest" }));
   cs.map(c => [c, S.patternsAll?.[c.Id.slice(0, 16)]]).filter(([, p]) => p?.new_error_patterns).sort((a, b) => b[1].new_error_patterns - a[1].new_error_patterns).slice(0, 4)
-    .forEach(([c, p]) => out.push({ src: "Logs", text: `<b>${esc(cname(c))}</b> logs ${p.new_error_patterns} new kind${p.new_error_patterns === 1 ? "" : "s"} of error since it started`, href: `#c/${esc(c.Id)}`, go: "Patterns", tab: "patterns" }));
+    .forEach(([c, p]) => out.push({ src: "Log patterns", text: `<b>${esc(cname(c))}</b> logs ${p.new_error_patterns} new kind${p.new_error_patterns === 1 ? "" : "s"} of error since it started`, href: `#c/${esc(c.Id)}`, go: "Patterns", tab: "patterns" }));
   const h = S.metrics?.host?.latest;
   if (h?.mem_total && h.mem / h.mem_total > .9) out.push({ src: "Host", bad: true, text: `Memory is ${(h.mem / h.mem_total * 100).toFixed(0)}% full: containers may soon be killed for lack of it`, href: "#containers", go: "Who uses it" });
   if (h?.cpus && h.load1 > h.cpus * 1.5) out.push({ src: "Host", text: `The host is overloaded: ${h.load1.toFixed(1)} tasks waiting for ${h.cpus} CPUs`, href: "#containers", go: "Who's busy" });
@@ -1155,10 +1154,10 @@ function findings() {
 function findingsCount() { const el = $("#n-ov"); if (el && S.containers) { const n = findings().length; el.textContent = n || "✓"; } }
 function viewOverview() {
   const F = findings(), bad = F.filter(f => f.bad).length, M = S.metrics, h = M?.host?.latest;
-  const sources = [["Docker", true], ["cgroups", M?.available], ["Logs", !!S.patternsAll], ["Traces", S.tel?.services?.length > 0]];
+  const sources = [["Docker", true], ["cgroups", M?.available], ["Log patterns", !!S.patternsAll], ["Telemetry", S.tel?.services?.length > 0]];
   const head = `<header class="ph"><div><div class="kick">${sources.map(([n, on]) => on ? n : `<span style="opacity:.45">${n}</span>`).join(" · ")} · live</div><h1>Overview</h1></div></header>`;
   const mood = `<section class="card mood" aria-label="Findings"><span class="badge${F.length ? "" : " ok"}" aria-hidden="true">${F.length ? F.length : "✓"}</span><div class="txt"><strong>${!F.length ? "All quiet" : `${F.length} thing${F.length === 1 ? "" : "s"} need${F.length === 1 ? "s" : ""} a look${bad ? "" : ", nothing urgent"}`}</strong>
-    <span class="muted">${F.length ? "Each line says where it comes from: Docker's own status, a crash postmortem, your apps' traces, the log patterns, or the host's counters." : `${S.containers.length} containers checked against their status, crashes, log errors${S.tel?.services?.length ? ", app traces" : ""} and host load.`}</span></div></section>`;
+    <span class="muted">${F.length ? "Each line says where it comes from: Docker's own status, an incident postmortem, telemetry from your apps, the log patterns, or the host's counters." : `${S.containers.length} containers checked against their status, crashes, log errors${S.tel?.services?.length ? ", app traces" : ""} and host load.`}</span></div></section>`;
   const finds = F.length ? `<div class="card" style="padding:0;border-top:0"><ul class="finds">${F.map(f => `<li><span class="src${f.bad ? " bad" : ""}">${f.src}</span><span>${f.text}</span><a class="go" href="${f.href}"${f.tab ? ` data-tabjump="${f.tab}"` : ""}>${f.go} →</a></li>`).join("")}</ul></div>` : "";
   const hc = M?.host?.spark_cpu || [], hm = M?.host?.spark_mem || [], span = n => `${Math.max(1, n)} min`;
   const host = `<section class="grid wide" style="margin-top:0">
@@ -1172,9 +1171,9 @@ function viewOverview() {
   const logs = S.containers.map(c => [c, S.patternsAll?.[c.Id.slice(0, 16)]]).filter(([, p]) => p?.error_lines).sort((a, b) => (b[1].new_error_patterns - a[1].new_error_patterns) || (b[1].error_lines - a[1].error_lines)).slice(0, 7);
   const cLogs = card("Errors in the logs", `<span class="muted" style="font-size:12px">since each started</span>`, logs.length ? `<ul class="ovl">${logs.map(([c, p]) => `<li><a href="#c/${esc(c.Id)}" data-tabjump="patterns"><b>${esc(cname(c))}</b><span>${p.new_error_patterns ? `<span class="pill s-bad" style="height:20px;font-size:11px">${p.new_error_patterns} new</span>` : ""}</span><span class="num">${p.error_lines.toLocaleString()} of ${p.lines.toLocaleString()}</span></a></li>`).join("")}</ul>` : `<p class="muted">No container has logged an error line${S.patternsAll ? "" : " (loading…)"}.</p>`);
   const sv = [...(S.tel?.services || [])].filter(x => x.requests_1h).sort((a, b) => b.errors_1h - a.errors_1h || b.rpm - a.rpm).slice(0, 7);
-  const cTel = card("App health", `<a href="#telemetry">${S.tel?.services?.length ? `All ${S.tel.services.length} →` : "Set up →"}</a>`, sv.length ? `<ul class="ovl">${sv.map(x => `<li><a href="#telemetry/${encodeURIComponent(x.service)}"><b>${esc(x.service)}</b>${mini(x.spark)}<span class="num">${x.error_rate >= .05 ? `<span style="color:var(--accent-ink);font-weight:700">${pctTxt(x.error_rate)}</span>` : pctTxt(x.error_rate)} · ${ms(x.p95)}</span></a></li>`).join("")}</ul><p class="muted" style="font-size:12px;margin:8px 0 0">errors · 95th percentile latency, from OpenTelemetry traces</p>` : `<p class="muted">Your apps can report requests, errors and latency over OpenTelemetry. The Telemetry page has two-line setups.</p>`);
+  const cTel = card("Telemetry", `<a href="#telemetry">${S.tel?.services?.length ? `All ${S.tel.services.length} →` : "Set up →"}</a>`, sv.length ? `<ul class="ovl">${sv.map(x => `<li><a href="#telemetry/${encodeURIComponent(x.service)}"><b>${esc(x.service)}</b>${mini(x.spark)}<span class="num">${x.error_rate >= .05 ? `<span style="color:var(--accent-ink);font-weight:700">${pctTxt(x.error_rate)}</span>` : pctTxt(x.error_rate)} · ${ms(x.p95)}</span></a></li>`).join("")}</ul><p class="muted" style="font-size:12px;margin:8px 0 0">errors · 95th percentile latency, from OpenTelemetry traces</p>` : `<p class="muted">Your apps can report requests, errors and latency over OpenTelemetry. The Telemetry page has two-line setups.</p>`);
   const inc = (S.incidents?.incidents || []).slice(0, 5);
-  const cInc = card("Recent crashes", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${i.oom_killed ? "OOM" : "exit " + i.exit_code}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
+  const cInc = card("Recent incidents", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${i.oom_killed ? "OOM" : "exit " + i.exit_code}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
   const cEv = `<div class="card"><div class="ovhead"><h2>Recent events</h2><span class="muted" style="font-size:12px">live from docker events</span></div><ol class="events" id="events">${eventsHtml()}</ol></div>`;
   return head + mood + finds + host + `<section class="grid wide" style="margin-top:0">${cBusy}${cLogs}${cTel}${cInc}</section><section class="grid wide" style="margin-top:0">${cEv}</section>`;
 }
@@ -1379,7 +1378,7 @@ curl -s -X POST -H "Authorization: Bearer $CONTRAIRE_TOKEN" ${esc(origin)}/api/c
 
 function viewAbout() {
   const s = S.self;
-  if (!s) return `<header class="ph"><div><div class="kick">self-telemetry</div><h1>This dashboard</h1></div></header><div class="card"><div class="skel" style="width:50%"></div></div>`;
+  if (!s) return `<header class="ph"><div><div class="kick">its own footprint</div><h1>This dashboard</h1></div></header><div class="card"><div class="skel" style="width:50%"></div></div>`;
   const cpu = selfCpu();
   const rows = [
     ["Name", `${esc(s.name)} <span class="muted">(contraire ${esc(s.version)})</span>`],
@@ -1394,13 +1393,13 @@ function viewAbout() {
     ["Connections now", `<span class="mono">${s.connections}</span> <span class="muted">(each open browser tab holds one live stream)</span>`],
     ["Requests served", `<span class="mono">${s.requests.toLocaleString()}</span>`],
   ];
-  return `<header class="ph"><div><div class="kick">self-telemetry · refreshed every 3 s</div><h1>This dashboard</h1></div></header>
+  return `<header class="ph"><div><div class="kick">its own footprint · refreshed every 3 s</div><h1>This dashboard</h1></div></header>
     <section class="card mood"><span class="badge ok" aria-hidden="true">✓</span><div class="txt"><strong>Running light</strong><span class="muted">${esc(s.name)} uses ${fmtBytes(s.rss)} of memory, ${cpu == null ? "almost no" : cpu.toFixed(2) + "% of one core's"} CPU and ${fmtBytes(s.exe_bytes)} of disk.</span></div></section>
     <section class="grid">
       <div class="card stat"><div class="top"><span>CPU</span><span class="mono">${(s.cpu_seconds ?? 0).toFixed(2)} s total</span></div><div class="row"><span class="big">${cpu == null ? "–" : cpu.toFixed(2) + "%"}</span><span>of one core</span></div>${S.selfHist.length > 1 ? spark(S.selfHist.map(x => x.cpu), 50) : ""}</div>
       <div class="card stat"><div class="top"><span>Memory</span><span class="mono">peak ${fmtBytes(s.rss_peak)}</span></div><div class="row"><span class="big">${fmtBytes(s.rss)}</span><span>resident</span></div>${S.selfHist.length > 1 ? spark(S.selfHist.map(x => x.rss), 50) : ""}</div>
-      <div class="card stat"><div class="top"><span>Disk</span><span class="mono">binary</span></div><div class="row"><span class="big">${fmtBytes(s.exe_bytes)}</span><span>one file, no dependencies</span></div><div class="foot2">Lessons and fonts load from the web; nothing else is stored.</div></div>
-      <div class="card stat"><div class="top"><span>Threads</span><span class="mono">${s.connections} connections</span></div><div class="row"><span class="big">${s.threads ?? "–"}</span><span>1 + one per connection + stream relays</span></div><div class="foot2">Idle threads exit within 15 s of a tab closing.</div></div>
+      <div class="card stat"><div class="top"><span>Disk</span><span class="mono">binary</span></div><div class="row"><span class="big">${fmtBytes(s.exe_bytes)}</span><span>one file, no dependencies</span></div><div class="foot2">Lessons and fonts load from the web. The state folder holds the audit log, tokens, incidents and saved metrics, each bounded.</div></div>
+      <div class="card stat"><div class="top"><span>Threads</span><span class="mono">${s.connections} connections</span></div><div class="row"><span class="big">${s.threads ?? "–"}</span><span>workers + one per connection + stream relays</span></div><div class="foot2">Workers: one log follower per running container, the metrics sampler, the telemetry aggregator. A closed tab's threads end within about 7 s.</div></div>
     </section>
     <section class="card"><h2 style="margin-bottom:14px">Process</h2><dl class="kvs">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></section>`;
 }
@@ -1758,10 +1757,10 @@ async function renderLearn(slug) {
   const ch = Lr.index.chapters;
   slug = slug || Lr.slug || ch[0].slug;
   if (!view.querySelector(".learn")) {
-    view.innerHTML = `<header class="ph"><div><div class="kick">${ch.length} lessons · loaded live from GitHub</div><h1>Learn Docker</h1></div><div class="lprogress" title="Lessons read"><span>your progress</span><div class="bar"><i id="lprog" style="width:0"></i></div></div></header><div class="readbar" id="readbar" aria-hidden="true"><i></i></div>
+    view.innerHTML = `<header class="ph"><div><div class="kick">${ch.filter(c => c.slug !== "cheat-sheet").length} lessons and a Docker cheat sheet · loaded live from GitHub</div><h1>Learn</h1></div><div class="lprogress" title="Lessons read"><span>your progress</span><div class="bar"><i id="lprog" style="width:0"></i></div></div></header><div class="readbar" id="readbar" aria-hidden="true"><i></i></div>
       <div class="learn"><nav class="lnav" aria-label="Lessons">${ch.map((c, i) => `
         <a href="#learn/${esc(c.slug)}" data-learn="${esc(c.slug)}" style="--h:${c.hue ?? hue(c.slug)}"><span class="num">${i + 1}</span><span>${esc(c.title)}<small>${esc(c.minutes)} min · ${esc(c.summary)}</small></span></a>`).join("")}
-        <a href="#cheatsheet" style="grid-template-columns:28px 1fr;border-top:2px solid var(--line)"><span class="num" style="background:var(--accent);color:#fff">›_</span><span>CLI cheat sheet<small>contraire, Claude Code and MCP</small></span></a>
+        <a href="#cheatsheet" style="grid-template-columns:28px 1fr;border-top:2px solid var(--line)"><span class="num" style="background:var(--accent);color:#fff">›_</span><span>Cheat sheet<small>contraire CLI, Claude Code and MCP</small></span></a>
         <div class="src">Nothing here is stored on this machine. <a href="${esc(Lr.index.source || docsBase())}" target="_blank" rel="noopener">Edit on GitHub</a></div></nav>
         <article class="doc" id="doc"></article></div>`;
   }
@@ -1966,8 +1965,9 @@ function startTerminal() {
   const top = [...run].sort((a, b) => (metricsOf(b)?.cpu || 0) - (metricsOf(a)?.cpu || 0)).slice(0, 3);
   const pad = (t, n) => (t + " ".repeat(n)).slice(0, n);
   const script = [
-    ["$ contraire ps", run.slice(0, 3).map(c => `${pad(cname(c), 18)} ${pad(status(c).label.toLowerCase(), 10)} ${c.Status.replace(HEALTH, "").trim()}`)],
-    ["$ contraire top", top.map(c => `${pad(cname(c), 18)} ${pad((metricsOf(c)?.cpu ?? 0).toFixed(1) + "%", 8)} ${fmtBytes(metricsOf(c)?.mem)}`)],
+    // Same columns as the real CLI (client.rs ps_text, top_text, patterns_text), cut to fit.
+    ["$ contraire ps", [`${pad("NAME", 18)} ${pad("STATUS", 10)} UP / SINCE`, ...run.slice(0, 3).map(c => `${pad(cname(c), 18)} ${pad(status(c).label.toLowerCase(), 10)} ${c.Status.replace(HEALTH, "").trim()}`)]],
+    ["$ contraire top", [`${pad("NAME", 18)} ${pad("CPU", 8)} MEMORY`, ...top.map(c => `${pad(cname(c), 18)} ${pad((metricsOf(c)?.cpu ?? 0).toFixed(1) + "%", 8)} ${fmtBytes(metricsOf(c)?.mem)}`)]],
   ];
   // The last command shows this host's real output too: new log patterns of the busiest container.
   if (top[0] && !S.termPatterns?.[top[0].Id]) {
@@ -1975,8 +1975,8 @@ function startTerminal() {
   }
   const tp = top[0] && S.termPatterns?.[top[0].Id];
   if (top[0]) script.push(["$ contraire patterns " + cname(top[0]) + " --new", tp?.patterns?.length
-    ? ["COUNT  LEVEL  PATTERN", ...tp.patterns.slice(0, 2).map(x => `${String(x.count).padStart(5)}  ${pad(x.level || "-", 5)}  ${x.pattern.slice(0, 60)}`)]
-    : [`${cname(top[0])}: nothing new since it started (${tp ? tp.lines : "…"} lines, all known patterns)`]]);
+    ? ["COUNT  LEVEL  LAST      PATTERN", ...tp.patterns.slice(0, 2).map(x => `${pad(String(x.count), 5)}  ${pad(x.level || "", 5)}  ${pad(ago(x.last), 8)}  NEW ${x.pattern.slice(0, 50)}`)]
+    : [`${cname(top[0])}: ${tp ? tp.lines : "…"} lines since ${tp ? ago(tp.since) : "…"} grouped into 0 patterns (<*> = varies)`]]);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = script.map(([c, o]) => [c, ...o].join("\n")).join("\n\n"); return; }
   let s = 0, ch = 0, text = "";
   const tick = () => {

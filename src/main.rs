@@ -41,7 +41,7 @@ struct App {
     metrics: Arc<metrics::Store>,
     logs: Arc<logwatch::Watch>,
     otlp: Arc<otlp::Otlp>,
-    /// Base URL the Learn tab fetches its content from (never embedded in the binary).
+    /// Base URL the Learn page fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
     started: std::time::Instant,
@@ -365,7 +365,7 @@ impl App {
                     .with_header("Vary", "Accept-Encoding")
                     .with_header(
                         "Content-Security-Policy",
-                        // The Learn tab fetches text and images from the docs origin (images shown via blob: URLs);
+                        // The Learn page fetches text and images from the docs origin (images shown via blob: URLs);
                         // fonts come from Google Fonts, with system fallbacks offline.
                         format!(
                             "default-src 'self'; script-src 'unsafe-inline'; \
