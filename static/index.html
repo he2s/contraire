@@ -701,7 +701,7 @@ const HELP = {
   "containers": ["Containers", "Every container on this Docker host. Status, CPU and memory update live: Docker <em>pushes</em> events to the page instead of the page polling. Click a row for logs, patterns, history and details."],
   "stacks": ["Stacks", "Compose projects (stacks), recognized from the labels Compose puts on its containers; the compose file itself is never needed. Stack actions follow <code>depends_on</code>: dependencies start first and stop last, containers in the same wave run in parallel."],
   "images": ["Images", "Read-only templates containers are made from. Layers are shared, so ten images built on the same base store that base once. <em>Unused</em> images can be removed safely; <em>dangling</em> ones (untagged leftovers of rebuilds) are what Prune clears."],
-  "incidents": ["Incidents", "When a container exits with an error or is killed for running out of memory, a flight recorder saves a postmortem: why it stopped, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
+  "incidents": ["Incidents", "When a container exits with an error, is killed for running out of memory, or starts failing its health check, a flight recorder saves a postmortem: why, its last log lines, error patterns and CPU/memory in the 15 minutes before. It survives <code>docker rm</code>. Crash loops count as one incident; at most 100 are kept."],
   "overview": ["Overview", "Every signal this dashboard collects, on one page: Docker's own status, CPU and memory from cgroups and <code>/proc</code>, errors mined from every log, crash postmortems and, if your apps send them, OpenTelemetry traces. The list at the top is plain rules over those numbers, never a guess, and each line names its source."],
   "busiest containers": ["Busiest containers", "Ranked by CPU right now (100% = one full core), with the last 5 minutes as bars and current memory. Click for the container's history."],
   "errors in the logs": ["Errors in the logs", "Containers whose log has lines mentioning errors, panics, exceptions or failures, as a count of all lines since start. <b>New</b> means kinds of error that first appeared after startup, usually the interesting ones."],
@@ -1095,18 +1095,22 @@ async function loadIncidents(id) {
     if (S.view === "incidents") render();
   } catch (e) { toast(e.message, true); }
 }
+/* One wording per incident kind, used on every page. */
+const incPill = i => i.reason === "unhealthy" ? "unhealthy" : i.oom_killed ? "out of memory" : "exit " + i.exit_code;
+const incWhat = i => i.reason === "unhealthy" ? "started failing its health check" : i.oom_killed ? "ran out of memory" : "exited with code " + i.exit_code;
+const incHint = i => i.reason === "unhealthy" ? "still running, check failing" : EXIT_HINT[i.exit_code] || "";
 function viewIncidents() {
   const head = sub => `<header class="ph"><div><div class="kick">${sub}</div><h1>Incidents</h1></div></header>`;
   if (S.arg) return incidentDetail(S.incident && S.incident.id === S.arg ? S.incident : null);
   const I = S.incidents;
   if (!I) return head("flight recorder") + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
   const intro = `<section class="card mood"><span class="badge${I.incidents.length ? "" : " ok"}" aria-hidden="true">${I.incidents.length ? "!" : "✓"}</span><div class="txt"><strong>${I.incidents.length ? `${I.incidents.length} crash${I.incidents.length === 1 ? "" : "es"} on record` : "No crashes recorded"}</strong>
-    <span class="muted">When a container stops with an error or runs out of memory, the flight recorder keeps a postmortem: the exit reason, its last log lines, new error patterns and its CPU and memory just before. It survives <code>docker rm</code>. Repeated crashes within 10 minutes count as one incident.</span></div></section>`;
+    <span class="muted">When a container stops with an error, runs out of memory or starts failing its health check, the flight recorder keeps a postmortem: the reason, its last log lines, new error patterns and its CPU and memory just before. It survives <code>docker rm</code>. Repeats within 10 minutes count as one incident.</span></div></section>`;
   if (!I.enabled) return head("flight recorder") + `<div class="card"><span class="muted">Postmortems are stored next to the audit log, which is off (<code>--audit-file off</code>).</span></div>`;
-  return head("flight recorder · newest first") + intro + (I.incidents.length ? `<div class="table"><div class="scroll"><div class="tr th inc-tr"><span>Container</span><span>Exit</span><span>Last line</span><span>When</span></div>
+  return head("flight recorder · newest first") + intro + (I.incidents.length ? `<div class="table"><div class="scroll"><div class="tr th inc-tr"><span>Container</span><span>Reason</span><span>Last line</span><span>When</span></div>
     ${I.incidents.map(i => `<div class="tr inc-tr" data-href="#incidents/${esc(i.id)}" tabindex="0">
-      <span><b>${esc(i.container.name)}</b><span class="muted" style="font-size:12px;display:block">${esc(i.container.stack || "")}${i.repeats > 1 ? ` · <span style="color:var(--accent-ink);font-weight:700">crashed ${i.repeats}×</span>` : ""}</span></span>
-      <span><span class="pill s-bad">${i.oom_killed ? "out of memory" : "exit " + i.exit_code}</span><span class="muted" style="font-size:11.5px;display:block;margin-top:3px">${esc(EXIT_HINT[i.exit_code] || "")}</span></span>
+      <span><b>${esc(i.container.name)}</b><span class="muted" style="font-size:12px;display:block">${esc(i.container.stack || "")}${i.repeats > 1 ? ` · <span style="color:var(--accent-ink);font-weight:700">${i.repeats}× in a row</span>` : ""}</span></span>
+      <span><span class="pill s-bad">${incPill(i)}</span><span class="muted" style="font-size:11.5px;display:block;margin-top:3px">${esc(incHint(i))}</span></span>
       <code class="mono" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((i.headline || "").slice(0, 200))}</code>
       <span class="muted">${ago(i.last)}</span></div>`).join("")}</div></div>` : "");
 }
@@ -1116,15 +1120,16 @@ function incidentDetail(i) {
   if (!i) return crumbs + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
   const c = i.container, live = S.containers.find(x => x.Id === c.id);
   const lines = (i.last_lines || []).map(l => { const lv = LV.find(([re]) => re.test(l)); return `<div class="ln${lv ? " " + lv[1] : ""}"><span class="lv">${lv ? lv[2] : ""}</span><span class="msg">${esc(l)}</span></div>`; }).join("");
-  return crumbs + `<header class="ph chead"><div style="min-width:0"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px"><h1>${esc(c.name)}</h1><span class="pill s-bad" style="height:30px;font-size:13px">${i.oom_killed ? "out of memory" : "exit " + i.exit_code}</span>${i.repeats > 1 ? `<span class="pill">crashed ${i.repeats}× in a row</span>` : ""}</div>
+  return crumbs + `<header class="ph chead"><div style="min-width:0"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px"><h1>${esc(c.name)}</h1><span class="pill s-bad" style="height:30px;font-size:13px">${incPill(i)}</span>${i.repeats > 1 ? `<span class="pill">${i.repeats}× in a row</span>` : ""}</div>
       <div class="meta"><span>${imageHtml(c.image || "")}</span><span>${esc(c.stack || "")}${c.service ? " / " + esc(c.service) : ""}</span><span>${new Date(i.last * 1000).toLocaleString()}</span></div></div>
       ${live ? `<a class="btn" href="#c/${esc(live.Id)}">Open container${icon("chev", 16)}</a>` : ""}</header>
     <section class="grid">
-      <div class="card sum"><span class="k">Why it stopped</span><strong>${i.oom_killed ? "Ran out of memory" : esc(EXIT_HINT[i.exit_code] || "exit code " + i.exit_code)}</strong><small>${[i.error, i.memory_limit ? "memory limit " + fmtBytes(i.memory_limit) : ""].filter(Boolean).map(esc).join(" · ")}</small></div>
-      <div class="card sum"><span class="k">Restarts</span><strong>${i.restarts ?? "–"}</strong><small>first crash ${ago(i.first)} · last ${ago(i.last)}</small></div>
-      <figure class="card chart" style="margin:0"><figcaption><span>CPU before the end</span><span class="mono" style="font-size:12px">15 min</span></figcaption>${i.metrics?.cpu?.length > 1 ? spark(i.metrics.cpu, 50) : '<p class="muted">no samples</p>'}</figure>
-      <figure class="card chart" style="margin:0"><figcaption><span>Memory before the end</span><span class="mono" style="font-size:12px">${i.metrics?.mem?.length ? fmtBytes(Math.max(...i.metrics.mem)) + " peak" : ""}</span></figcaption>${i.metrics?.mem?.length > 1 ? spark(i.metrics.mem, 50) : '<p class="muted">no samples</p>'}</figure>
+      <div class="card sum"><span class="k">${i.reason === "unhealthy" ? "What failed" : "Why it stopped"}</span><strong>${i.reason === "unhealthy" ? `Health check failing${i.health?.failing_streak ? ` ${i.health.failing_streak}× in a row` : ""}` : i.oom_killed ? "Ran out of memory" : esc(EXIT_HINT[i.exit_code] || "exit code " + i.exit_code)}</strong><small>${[i.error, i.memory_limit ? "memory limit " + fmtBytes(i.memory_limit) : ""].filter(Boolean).map(esc).join(" · ")}</small></div>
+      <div class="card sum"><span class="k">Restarts</span><strong>${i.restarts ?? "–"}</strong><small>first ${ago(i.first)} · last ${ago(i.last)}</small></div>
+      <figure class="card chart" style="margin:0"><figcaption><span>${i.reason === "unhealthy" ? "CPU before it failed" : "CPU before the end"}</span><span class="mono" style="font-size:12px">15 min</span></figcaption>${i.metrics?.cpu?.length > 1 ? spark(i.metrics.cpu, 50) : '<p class="muted">no samples</p>'}</figure>
+      <figure class="card chart" style="margin:0"><figcaption><span>${i.reason === "unhealthy" ? "Memory before it failed" : "Memory before the end"}</span><span class="mono" style="font-size:12px">${i.metrics?.mem?.length ? fmtBytes(Math.max(...i.metrics.mem)) + " peak" : ""}</span></figcaption>${i.metrics?.mem?.length > 1 ? spark(i.metrics.mem, 50) : '<p class="muted">no samples</p>'}</figure>
     </section>
+    ${i.health?.checks?.length ? `<div class="card"><h2 style="margin-bottom:10px">Health check output</h2>${i.health.checks.map(h => `<div style="display:grid;grid-template-columns:90px 1fr;gap:12px;padding:5px 0;border-top:1px solid var(--line-soft)"><span class="pill s-bad">exit ${esc(h.exit_code)}</span><code class="mono" style="font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere">${esc(h.output || "(no output)")}</code></div>`).join("")}</div>` : ""}
     <section class="grid wide">
       <div class="card"><h2 style="margin-bottom:10px">Error patterns</h2>${pats(i.error_patterns, "No error-level lines.")}</div>
       <div class="card"><h2 style="margin-bottom:10px">New since it started</h2>${pats(i.new_patterns, "Nothing that wasn't there at startup.")}</div>
@@ -1139,7 +1144,7 @@ function findings() {
   cs.filter(c => status(c).bucket === "attention").forEach(c => out.push({ src: "Docker", bad: true, text: `<b>${esc(cname(c))}</b> is ${esc(status(c).label.toLowerCase())}`, href: `#c/${esc(c.Id)}`, go: "Open" }));
   const day = Date.now() / 1000 - 86400;
   const seen = new Set();
-  (S.incidents?.incidents || []).filter(i => i.last > day && !seen.has(i.container.name) && seen.add(i.container.name)).slice(0, 4).forEach(i => out.push({ src: "Incident", bad: true, text: `<b>${esc(i.container.name)}</b> ${i.oom_killed ? "ran out of memory" : "exited with code " + i.exit_code}${i.repeats > 1 ? `, ${i.repeats}× in a row` : ""} · ${ago(i.last)}`, href: `#incidents/${esc(i.id)}`, go: "Postmortem" }));
+  (S.incidents?.incidents || []).filter(i => i.last > day && !seen.has(i.container.name) && seen.add(i.container.name)).slice(0, 4).forEach(i => out.push({ src: "Incident", bad: true, text: `<b>${esc(i.container.name)}</b> ${incWhat(i)}${i.repeats > 1 ? `, ${i.repeats}× in a row` : ""} · ${ago(i.last)}`, href: `#incidents/${esc(i.id)}`, go: "Postmortem" }));
   (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.error_rate >= .05).sort((a, b) => b.errors_1h - a.errors_1h).slice(0, 4)
     .forEach(x => out.push({ src: "Telemetry", bad: x.error_rate >= .2, text: `<b>${esc(x.service)}</b> fails ${pctTxt(x.error_rate)} of its requests (${x.errors_1h.toLocaleString()} in the last hour)`, href: `#telemetry/${encodeURIComponent(x.service)}`, go: "Which calls" }));
   (S.tel?.services || []).filter(x => x.requests_1h >= 20 && x.p95 > 2000 && x.error_rate < .05).slice(0, 2)
@@ -1173,7 +1178,7 @@ function viewOverview() {
   const sv = [...(S.tel?.services || [])].filter(x => x.requests_1h).sort((a, b) => b.errors_1h - a.errors_1h || b.rpm - a.rpm).slice(0, 7);
   const cTel = card("Telemetry", `<a href="#telemetry">${S.tel?.services?.length ? `All ${S.tel.services.length} →` : "Set up →"}</a>`, sv.length ? `<ul class="ovl">${sv.map(x => `<li><a href="#telemetry/${encodeURIComponent(x.service)}"><b>${esc(x.service)}</b>${mini(x.spark)}<span class="num">${x.error_rate >= .05 ? `<span style="color:var(--accent-ink);font-weight:700">${pctTxt(x.error_rate)}</span>` : pctTxt(x.error_rate)} · ${ms(x.p95)}</span></a></li>`).join("")}</ul><p class="muted" style="font-size:12px;margin:8px 0 0">errors · 95th percentile latency, from OpenTelemetry traces</p>` : `<p class="muted">Your apps can report requests, errors and latency over OpenTelemetry. The Telemetry page has two-line setups.</p>`);
   const inc = (S.incidents?.incidents || []).slice(0, 5);
-  const cInc = card("Recent incidents", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${i.oom_killed ? "OOM" : "exit " + i.exit_code}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
+  const cInc = card("Recent incidents", `<a href="#incidents">All →</a>`, inc.length ? `<ul class="ovl">${inc.map(i => `<li><a href="#incidents/${esc(i.id)}"><b>${esc(i.container.name)}</b><span class="pill s-bad" style="height:20px;font-size:11px;justify-self:start">${incPill(i)}${i.repeats > 1 ? ` ×${i.repeats}` : ""}</span><span class="num">${ago(i.last)}</span></a></li>`).join("")}</ul>` : `<p class="muted">No crashes recorded. The flight recorder keeps a postmortem whenever one happens.</p>`);
   const cEv = `<div class="card"><div class="ovhead"><h2>Recent events</h2><span class="muted" style="font-size:12px">live from docker events</span></div><ol class="events" id="events">${eventsHtml()}</ol></div>`;
   return head + mood + finds + host + `<section class="grid wide" style="margin-top:0">${cBusy}${cLogs}${cTel}${cInc}</section><section class="grid wide" style="margin-top:0">${cEv}</section>`;
 }

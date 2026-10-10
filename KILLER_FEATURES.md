@@ -12,7 +12,7 @@ Most AI-ops tools put a model or a heavy agent next to the workload. Here the ed
 |---|---|---|---|---|---|
 | 1 | Token-budgeted context endpoint | Observability designed for LLM context windows | ~0 | S | idea |
 | 2 | Log template mining at the edge | A million lines become 30 patterns, on a Pi, with no allocations | ~1 MB | M | **shipped** |
-| 3 | Incident flight recorder | Postmortems survive `docker rm` and reboots | bounded file, e.g. 8 MB | M | **shipped** (as files, not mmap; health-check trigger open) |
+| 3 | Incident flight recorder | Postmortems survive `docker rm` and reboots | bounded file, e.g. 8 MB | M | **shipped** (as files, not mmap) |
 | 4 | Infrastructure pull requests | Agents propose, humans approve a diff with its blast radius | ~0 | M | idea |
 | 5 | Closed-loop deploys with Claude Code | The agent deploys, watches, and rolls back in one session | 0 on the edge | M | partly (skill: change and verify) |
 | 6 | Discovered vs. declared dependencies | Real traffic compared with `depends_on` | small | M | idea |
@@ -50,7 +50,7 @@ The server learns templates from streamed logs as it reads them, in the style of
 
 ## 3. Incident flight recorder
 
-**Status: shipped** (`logwatch.rs`, the Incidents page, `contraire incidents`). Postmortems are JSON files in the state folder rather than one memory-mapped ring, and the minute metrics history survives restarts. Still open: a postmortem when a health check starts failing, Parquet output.
+**Status: shipped** (`logwatch.rs`, the Incidents page, `contraire incidents`). Postmortems are JSON files in the state folder rather than one memory-mapped ring, and the minute metrics history survives restarts. Crashes, OOM kills and failing health checks each trigger one. Still open: Parquet output.
 
 Each container gets a fixed-size ring buffer in one memory-mapped file: events, per-second stats, the log tail and template counts. When a container dies, OOMs or fails a health check, the window around the event is frozen into a compact postmortem. Optionally it's written as Parquet.
 

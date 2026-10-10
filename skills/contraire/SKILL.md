@@ -46,7 +46,7 @@ contraire ps                         # everything, with plain-language status
 contraire top                        # CPU, memory, network, disk per container, busiest first
 contraire stacks                     # Compose stacks and which services need attention
 contraire patterns <name>            # its whole log as counted patterns, errors first (--new: only since start)
-contraire incidents                  # incidents: crashes the flight recorder caught, with postmortems
+contraire incidents                  # incidents: crashes and failing health checks, with postmortems
 contraire services                   # telemetry: requests, errors, latency per service (if apps send OpenTelemetry)
 contraire inspect <name>             # state, health streak, exit code explained, restarts, ports, mounts, depends_on
 contraire logs <name> -n 200         # recent output (stdout + stderr)

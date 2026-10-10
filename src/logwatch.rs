@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -92,6 +93,8 @@ impl Snapshot {
 struct Cell {
     snap: Mutex<Arc<Snapshot>>,
     name: Mutex<String>,
+    /// Set by the supervisor on `health_status: unhealthy`; the follower records a postmortem.
+    unhealthy: AtomicBool,
 }
 
 pub struct Watch {
@@ -334,8 +337,8 @@ impl Watch {
                     }
                 }
             }
-            // filters={"type":["container"],"event":["start","kill"]}
-            let path = "/events?filters=%7B%22type%22%3A%5B%22container%22%5D%2C%22event%22%3A%5B%22start%22%2C%22kill%22%5D%7D";
+            // filters={"type":["container"],"event":["start","kill","health_status"]}
+            let path = "/events?filters=%7B%22type%22%3A%5B%22container%22%5D%2C%22event%22%3A%5B%22start%22%2C%22kill%22%2C%22health_status%22%5D%7D";
             if let Ok(Ok(mut s)) = self.docker.stream(path, Duration::from_secs(60)) {
                 let mut buf = Vec::new();
                 loop {
@@ -348,7 +351,13 @@ impl Watch {
                         if let Ok(v) = serde_json::from_slice::<Value>(&buf[..i])
                             && let Some(id) = v.pointer("/Actor/ID").and_then(Value::as_str)
                         {
-                            if v["Action"] == "kill" {
+                            if v["Action"] == "health_status: unhealthy" {
+                                if let Some(c) = self.followers.lock().unwrap_or_else(|e| e.into_inner()).get(id) {
+                                    c.unhealthy.store(true, Ordering::Relaxed);
+                                }
+                            } else if v["Action"].as_str().is_some_and(|a| a.starts_with("health_status")) {
+                                // healthy again, or starting: nothing to record
+                            } else if v["Action"] == "kill" {
                                 let mut k = self.killed.lock().unwrap_or_else(|e| e.into_inner());
                                 let now = crate::unix_now();
                                 k.retain(|_, t| now.saturating_sub(*t) < 300);
@@ -374,7 +383,7 @@ impl Watch {
                     return; // already followed
                 }
             }
-            let cell = Arc::new(Cell { snap: Mutex::new(Arc::new(Snapshot::default())), name: Mutex::new(name.to_string()) });
+            let cell = Arc::new(Cell { snap: Mutex::new(Arc::new(Snapshot::default())), name: Mutex::new(name.to_string()), unhealthy: AtomicBool::new(false) });
             f.insert(id.to_string(), cell.clone());
             cell
         };
@@ -413,17 +422,24 @@ impl Watch {
                 published = Instant::now();
                 dirty = false;
             }
+            if cell.unhealthy.swap(false, Ordering::Relaxed)
+                && let Some(dir) = &self.incidents
+            {
+                self.record(dir, id, &miner, &ring, true);
+            }
             if matches!(tick, Tick::Eof) {
                 break;
             }
         }
         // The container stopped. Record it if it died badly.
         if let Some(dir) = &self.incidents {
-            self.record(dir, id, &miner, &ring);
+            self.record(dir, id, &miner, &ring, false);
         }
     }
 
-    fn record(&self, dir: &PathBuf, id: &str, miner: &Miner, ring: &Ring) {
+    /// Writes a postmortem: for an exit (`unhealthy == false`, skipped when the exit was clean or
+    /// deliberate), or for a container whose health check just started failing while it runs.
+    fn record(&self, dir: &PathBuf, id: &str, miner: &Miner, ring: &Ring, unhealthy: bool) {
         let Ok(r) = self.docker.get(&format!("/containers/{id}/json")) else { return };
         let d: Value = serde_json::from_slice(&r.body).unwrap_or_default();
         let st = &d["State"];
@@ -433,9 +449,22 @@ impl Watch {
         let deliberate = self.killed.lock().unwrap_or_else(|e| e.into_inner()).get(id).is_some_and(|t| now.saturating_sub(*t) < 30);
         // Clean exits (0), polite stops (143 = SIGTERM) and stop-then-SIGKILL (137 after a
         // kill event) are not incidents; an OOM kill always is.
-        if !oom && (code == 0 || code == 143 || (code == 137 && deliberate)) {
+        if !unhealthy && !oom && (code == 0 || code == 143 || (code == 137 && deliberate)) {
             return;
         }
+        let reason = if unhealthy { "unhealthy" } else if oom { "oom" } else { "exit" };
+        // The health check's own last outputs usually say exactly what failed.
+        let health = unhealthy.then(|| {
+            let log: Vec<Value> = st["Health"]["Log"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .rev()
+                .take(3)
+                .map(|l| json!({ "exit_code": l["ExitCode"], "output": l["Output"].as_str().unwrap_or("").trim().chars().take(400).collect::<String>(), "at": l["End"] }))
+                .collect();
+            json!({ "failing_streak": st["Health"]["FailingStreak"], "checks": log })
+        });
         let name = d["Name"].as_str().unwrap_or("").trim_start_matches('/').to_string();
         let series = self.metrics.container(id, false, 90); // 15 minutes at 10 s
         let field = |i: usize| series.as_ref().map(|s| json!(s[i])).unwrap_or(json!([]));
@@ -452,7 +481,8 @@ impl Watch {
         entries.sort_by_key(|e| std::cmp::Reverse(e.1));
         let previous = entries.iter().find_map(|(p, _)| {
             let v: Value = serde_json::from_str(&fs::read_to_string(p).ok()?).ok()?;
-            (v["container"]["id"] == id && v["exit_code"] == code && now.saturating_sub(v["last"].as_u64()?) < 600).then(|| (p.clone(), v))
+            let same = if unhealthy { v["reason"] == "unhealthy" } else { v["reason"] != "unhealthy" && v["exit_code"] == code };
+            (v["container"]["id"] == id && same && now.saturating_sub(v["last"].as_u64()?) < 600).then(|| (p.clone(), v))
         });
         let (path, first, repeats) = match previous {
             Some((p, v)) => (p, v["first"].as_u64().unwrap_or(now), v["repeats"].as_u64().unwrap_or(1) + 1),
@@ -467,8 +497,10 @@ impl Watch {
                 "id": id, "name": name, "image": d["Config"]["Image"],
                 "stack": labels["com.docker.compose.project"], "service": labels["com.docker.compose.service"],
             },
-            "exit_code": code,
-            "oom_killed": oom,
+            "reason": reason,
+            "exit_code": if unhealthy { Value::Null } else { json!(code) },
+            "oom_killed": oom && !unhealthy,
+            "health": health,
             "error": st["Error"],
             "restarts": d["RestartCount"],
             "started_at": st["StartedAt"],
@@ -552,8 +584,10 @@ impl Watch {
             .map(|i| {
                 json!({
                     "id": i["id"], "first": i["first"], "last": i["last"], "repeats": i["repeats"],
-                    "container": i["container"], "exit_code": i["exit_code"], "oom_killed": i["oom_killed"],
-                    "headline": i["error_patterns"][0]["example"].as_str().or_else(|| i["last_lines"].as_array()?.last()?.as_str()),
+                    "container": i["container"], "reason": i["reason"], "exit_code": i["exit_code"], "oom_killed": i["oom_killed"],
+                    "headline": i["health"]["checks"][0]["output"].as_str().filter(|s| !s.is_empty())
+                        .or_else(|| i["error_patterns"][0]["example"].as_str())
+                        .or_else(|| i["last_lines"].as_array()?.last()?.as_str()),
                 })
             })
             .collect()

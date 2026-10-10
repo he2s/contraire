@@ -125,7 +125,7 @@ The binary is `main.rs` plus twelve modules and one embedded page. Long-form con
   - One follower thread per running container. A supervisor watches Docker `start` and `kill` events.
   - Each line is masked into a reused buffer: numbers, times, IPs, IDs and unit values become `<*>`; words are split at `/[](),;`; runs of `<*>` collapse.
   - Lines matching a known pattern allocate nothing. Unknown ones merge into a similar pattern (same length and first word, ≥70% equal) or start a new one, up to 128 per container.
-  - The last 32 KB of output sits in a fixed ring buffer. On a non-zero exit or OOM kill (but not 0, 143, or 137 shortly after a `kill` event) a postmortem goes to `<state>/incidents/`. Crash loops update one file; at most 100 files are kept.
+  - The last 32 KB of output sits in a fixed ring buffer. On a non-zero exit or OOM kill (but not 0, 143, or 137 shortly after a `kill` event), or when Docker reports `health_status: unhealthy` (the supervisor flags the follower, which records while the container keeps running, with the check's own output), a postmortem goes to `<state>/incidents/` with a `reason` of `exit`, `oom` or `unhealthy`. Crash loops update one file; at most 100 files are kept.
   - Snapshots are published through `Mutex<Arc<_>>` cells, swapped every 5 s; the follower registry, kill times and per-service miners sit behind `Mutex`es too, all touched rarely or briefly.
   - Memory grows with followed containers; `footprint.sh` budgets 4 MB + 256 KB per container.
 - **`src/otlp.rs`:** OTLP/HTTP receiver on `POST /v1/traces|logs|metrics`, protobuf (hand-written reader, no codegen) or JSON. gzip gets 415, gRPC isn't served.

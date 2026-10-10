@@ -53,7 +53,7 @@ contraire logs web -f                                  # follow live until you p
 contraire logs web -t                                  # with timestamps
 contraire patterns web                                 # the whole log as counted patterns, errors first
 contraire patterns web --new                           # only messages that appeared after it started
-contraire incidents                                    # crashes caught by the flight recorder
+contraire incidents                                    # crashes and failing health checks the flight recorder caught
 contraire incident <id>                                # postmortem: why it died, last lines, metrics before
 contraire logs web -n 1000 | grep -i error             # only the lines that mention errors
 ```

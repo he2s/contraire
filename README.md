@@ -11,7 +11,7 @@
 - **Copy buttons** for every command, ID and code sample.
 - **Metrics:** CPU, memory, network and disk for every container and the host, read straight from cgroups and `/proc` every 10 s. The last hour is kept at 10 s, the last 24 h at 1 minute; the minute history is saved to disk and survives restarts. `/metrics` serves Prometheus format for an existing Grafana.
 - **Log patterns:** every container's log, grouped live into patterns with counts (`GET /api/items/<*>` ×48,212), with errors and newly appearing patterns flagged.
-- **Incidents:** a flight recorder writes a postmortem when a container crashes or runs out of memory: exit reason, last log lines, error patterns, and CPU and memory just before. Crash loops count once.
+- **Incidents:** a flight recorder writes a postmortem when a container crashes, runs out of memory or starts failing its health check: the reason, last log lines, error patterns, and CPU and memory just before. Crash loops count once.
 - **Telemetry:** your own apps can report over OpenTelemetry (OTLP/HTTP, protobuf or JSON). Traces become requests per minute, error rate and p50/p95/p99 latency per service and operation, with the latest failed and slowest requests and their trace IDs. OTLP logs become patterns. One hour in fixed-size rings in memory, nothing on disk; `--otlp-forward` passes every batch on to another collector.
 - **Activity:** an append-only audit log of every change made through the dashboard: who, when, from where, and whether it worked. It is bounded to about 2 MB on disk.
 
@@ -75,7 +75,7 @@ contraire logs web -f             # follow live
 contraire restart web
 contraire top                     # CPU, memory, network and disk per container, busiest first
 contraire patterns web            # its whole log as counted patterns, errors first
-contraire incidents               # crashes caught by the flight recorder
+contraire incidents               # crashes and failing health checks the flight recorder caught
 contraire stacks                  # Compose stacks and what needs attention
 contraire events --since 30       # starts, stops with exit codes, OOM kills, health changes
 contraire services                # Telemetry: apps reporting over OpenTelemetry, with requests, errors, latency
