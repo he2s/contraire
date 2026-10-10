@@ -51,6 +51,10 @@ contraire logs web                                     # last 100 lines
 contraire logs web -n 500                              # last 500 lines
 contraire logs web -f                                  # follow live until you press Ctrl+C
 contraire logs web -t                                  # with timestamps
+contraire patterns web                                 # the whole log as counted patterns, errors first
+contraire patterns web --new                           # only messages that appeared after it started
+contraire incidents                                    # crashes caught by the flight recorder
+contraire incident <id>                                # postmortem: why it died, last lines, metrics before
 contraire logs web -n 1000 | grep -i error             # only the lines that mention errors
 ```
 
@@ -87,10 +91,45 @@ Then just ask, in your own words:
 | `list_containers`, `list_stacks` | See everything, with plain-language status |
 | `inspect_container` | Health streak, exit code explained, ports, mounts |
 | `container_logs` | Last lines, optionally filtered by a word |
+| `log_patterns`, `incidents` | The whole log as patterns; crash postmortems |
 | `top_containers`, `container_metrics` | Resource use now, and now/peak/avg over 1 h or 24 h |
 | `container_stats`, `host_info` | Live CPU, memory, network, host facts |
 | `recent_events`, `activity` | What happened, and who changed what |
 | `start_container`, `restart_container`, `stop_container`, `stack_action` | Act (needs operate) |
+
+## Sessions and the Claude Code skill
+
+A session is a folder that Claude Code works in. It holds the skill, the server address, a log of every command, and a journal.
+
+```sh
+contraire init ops-pi                                  # new folder: skill, config, action log, SESSION.md, git repo
+cd ops-pi && claude                                    # Claude picks up the skill and the folder's settings
+cat .contraire/actions.log                             # every command, MCP tool call and result, with time
+cat SESSION.md                                         # Claude's journal: checked, found, changed, next
+contraire init ops-pi --skill-from skills/contraire/SKILL.md   # offline: copy the skill from a local file
+```
+
+| File | What it is |
+|---|---|
+| `.claude/skills/contraire/SKILL.md` | How Claude triages, reads logs and verifies changes |
+| `.claude/settings.json` | Read-only commands pre-approved; changes still ask you |
+| `.contraire/session.json` | Server address and log location |
+| `.contraire/token` | The API token: mode 0600, ignored by git, never printed |
+| `.contraire/actions.log` | Written by the CLI itself, not by Claude |
+| `SESSION.md` | The human-readable journal |
+
+To use the skill everywhere instead of in one folder, copy it to your user skills:
+
+```sh
+mkdir -p ~/.claude/skills/contraire && curl -fsSL https://raw.githubusercontent.com/he2s/contraire/main/skills/contraire/SKILL.md -o ~/.claude/skills/contraire/SKILL.md   # install the skill for every project
+```
+
+| Problem | Fix |
+|---|---|
+| Claude doesn't use the skill | Mention the host or a container by name, or say "use the contraire skill" |
+| Claude asks about every `ps` | Run it inside a session folder: `contraire init` pre-approves read-only commands |
+| `not authorized` inside a session | The token in `.contraire/token` was revoked: create a new one and replace the file |
+| Claude wants to run `docker` directly | The skill prefers `contraire` so every action is audited; say "stay on contraire" |
 
 ## Tokens and permissions
 
@@ -121,6 +160,25 @@ contraire --help                                       # every option, with its 
 ```sh
 docker run -d -p 8083:8083 -v /var/run/docker.sock:/var/run/docker.sock contraire   # as a container
 docker compose up -d                                   # with the compose.yaml from the repository
+```
+
+## The binary
+
+One file for every role: dashboard, client, MCP server. Releases are built by GitHub Actions for each tag, and every file has a SHA-256 in `SHA256SUMS`.
+
+| Platform | File |
+|---|---|
+| Raspberry Pi, 64-bit OS | `contraire-linux-arm64` |
+| Raspberry Pi, 32-bit OS | `contraire-linux-armv7` |
+| Linux PC / server | `contraire-linux-amd64` |
+| Windows | `contraire-windows-amd64.exe` |
+
+```sh
+contraire --version                                    # which version you have
+CONTRAIRE_VERSION=v0.1.1 sh install.sh                 # install a specific release
+curl -fsSLO https://github.com/he2s/contraire/releases/latest/download/contraire-linux-arm64   # download by hand
+curl -fsSL https://github.com/he2s/contraire/releases/latest/download/SHA256SUMS | sha256sum -c --ignore-missing   # …and verify it
+cargo build --release                                  # build it yourself (compiles on a Pi 3, too)
 ```
 
 ## When something goes wrong

@@ -7,11 +7,13 @@ mod compose;
 mod docker;
 mod http;
 mod live;
+mod logwatch;
 mod metrics;
 mod tokens;
 
 use std::collections::HashMap;
 use std::net::TcpListener;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
@@ -36,6 +38,7 @@ struct App {
     user: Option<String>,
     tokens: tokens::Store,
     metrics: Arc<metrics::Store>,
+    logs: Arc<logwatch::Watch>,
     /// Base URL the Learn tab fetches its content from (never embedded in the binary).
     docs_url: String,
     listen: String,
@@ -74,15 +77,18 @@ fn main() {
     });
     let active = Arc::new(AtomicUsize::new(0));
     let audit = audit::Audit::open(&cfg.audit, |k| std::env::var(k).ok());
-    let token_store = tokens::Store::open(audit.path().and_then(|p| p.parent()).map(|d| d.join("tokens.json")));
+    let state_dir = audit.path().and_then(|p| p.parent()).map(Path::to_path_buf);
+    let token_store = tokens::Store::open(state_dir.as_ref().map(|d| d.join("tokens.json")));
+    let metrics_store = metrics::start("/sys/fs/cgroup");
     let app = Arc::new(App {
-        docker,
+        docker: docker.clone(),
         auth,
         docs_url: cfg.docs_url,
         audit,
         user: cfg.password.is_some().then(|| cfg.user.clone()),
         tokens: token_store,
-        metrics: metrics::start("/sys/fs/cgroup"),
+        logs: logwatch::Watch::start(docker.clone(), metrics_store.clone(), state_dir),
+        metrics: metrics_store,
         listen: cfg.listen.clone(),
         started: std::time::Instant::now(),
         started_unix: unix_now(),
@@ -342,6 +348,20 @@ impl App {
                 Ok(false) => Response::error(404, "no such token"),
                 Err(e) => Response::error(500, &e),
             },
+            ("GET", ["api", "logs", "patterns"]) => Response::json(200, self.logs.overview().to_string()),
+            ("GET", ["api", "logs", "patterns", id]) if valid_id(id) => match self.logs.patterns(id) {
+                Some(s) => Response::json(200, s.to_json(req.param("new") == Some("1")).to_string()).with_header("Cache-Control", "no-store"),
+                None => Response::error(404, "not following this container (is it running?)"),
+            },
+            ("GET", ["api", "incidents"]) => Response::json(
+                200,
+                json!({ "enabled": self.logs.incidents_dir().is_some(), "incidents": self.logs.incident_list(200) }).to_string(),
+            )
+            .with_header("Cache-Control", "no-store"),
+            ("GET", ["api", "incidents", id]) if valid_id(id) => match self.logs.incident(id) {
+                Some(v) => Response::json(200, v.to_string()),
+                None => Response::error(404, "no such incident"),
+            },
             ("GET", ["api", "metrics"]) => self.metrics_overview(req),
             ("GET", ["api", "metrics", id]) if valid_id(id) => self.metrics_container(req, id)?,
             ("GET", ["metrics"]) => self.prometheus()?,
@@ -419,6 +439,7 @@ impl App {
             "auth": self.auth.is_some(),
             "audit": self.audit.path().map(|p| p.display().to_string()),
             "tokens": self.tokens.path().map(|_| self.tokens.len()),
+            "logs": { "following": self.logs.following(), "incidents": self.logs.incidents_dir().map(|p| p.display().to_string()) },
             "metrics": {
                 "available": self.metrics.available(),
                 "samples": self.metrics.samples(),

@@ -117,6 +117,13 @@ The binary has six Rust modules plus one embedded page. Long-form content lives 
   - One writer, lock-free readers. Slots outlive their container and are reused least-recently-seen.
   - Routes: `/api/metrics` (latest values and sparklines), `/api/metrics/<id>?range=1h|24h`, and `/metrics` (Prometheus text format, labelled with name, stack and service).
   - Inside a container it needs `--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro --pid=host`; without them only host metrics work.
+- **`src/logwatch.rs`:** log patterns and the crash flight recorder.
+  - One follower thread per running container. A supervisor watches Docker `start` and `kill` events.
+  - Each line is masked into a reused buffer: numbers, times, IPs, IDs and unit values become `<*>`; words are split at `/[](),;`; runs of `<*>` collapse.
+  - Lines matching a known pattern allocate nothing. Unknown ones merge into a similar pattern (same length and first word, ≥70% equal) or start a new one, up to 128 per container.
+  - The last 32 KB of output sits in a fixed ring buffer. On a non-zero exit or OOM kill (but not 0, 143, or 137 shortly after a `kill` event) a postmortem goes to `<state>/incidents/`. Crash loops update one file; at most 100 files are kept.
+  - Snapshots are published through `Mutex<Arc<_>>` cells, swapped every 5 s: the second deliberate lock.
+  - Memory grows with followed containers; `footprint.sh` budgets 4 MB + 256 KB per container.
 - **`src/cli.rs`:** argument parsing (see above).
 - **`src/client.rs`:** client mode. When the first argument is a command (`ps`, `logs`, `mcp`, …), `main` hands off here and the server code never runs.
   - It talks to a server's HTTP API, reusing `docker.rs`'s HTTP client over `tcp://` with extra headers (`Bearer` token, `X-Contraire`).

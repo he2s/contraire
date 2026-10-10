@@ -24,7 +24,7 @@ for a in "$@"; do
 done
 
 # Budgets (KB, %, count). Keep in sync with ROADMAP.md.
-B_BINARY=1024 B_PAGE=120 B_IDLE_RSS=5120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384 B_THREADS_AFTER=1
+B_BINARY=1024 B_PAGE=120 B_IDLE_CPU=0.5 B_PEAK_RSS=16384 B_THREADS_AFTER=1
 
 BIN=target/release/contraire
 cargo build --release --quiet
@@ -64,7 +64,13 @@ row "binary size" $(( $(stat -c %s $BIN) / 1024 )) $B_BINARY KB
 row "web page, gzip -9" $(( $(gzip -9 -c static/index.html | wc -c) / 1024 )) $B_PAGE KB
 
 echo "Idle"
-sleep 1
+sleep 3
+# Each running container gets a log follower (~200 KB: ring, patterns, stack), so the idle
+# budget scales with what's on the host: 4 MB base + 256 KB per followed container.
+following=$(curl -s $URL/api/self | sed -n 's/.*"following":\([0-9]*\).*/\1/p')
+following=${following:-0}
+B_IDLE_RSS=$((4096 + 256 * following))
+info "containers followed for log patterns" "$following" ""
 row "RSS at idle" "$(status VmRSS)" $B_IDLE_RSS KB
 curl -sN $URL/api/stream >/dev/null & STREAM_PIDS+=($!)
 sleep 1

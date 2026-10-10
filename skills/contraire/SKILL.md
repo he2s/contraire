@@ -54,7 +54,7 @@ The status column already sorts problems for you: `unhealthy`, `failed (<code>)`
 
 1. `contraire ps`. List the containers that need attention. If there are many, start with the ones others depend on, such as databases, brokers and collectors. Compose `depends_on` in `inspect` tells you this. A broken dependency often explains several failing dependents at once.
 2. `contraire inspect <name>` for each of them. The exit code comes with a plain-language hint: 137 means out of memory or force-stopped, 1 means an app error, 127 means command not found. Also note `restarts`, the health streak, `oom` and the memory limit.
-3. Read logs **narrowly**. Logs are the most expensive thing you can read:
+3. **Patterns before raw logs.** `contraire patterns <name>` (MCP: `log_patterns`) gives the whole log since start as counted patterns, errors first. `--new` shows only what appeared after startup, which is often exactly the regression. If it crashed, `contraire incidents` / `contraire incident <id>` has the postmortem: exit reason, last lines and memory just before. Then read raw logs **narrowly**, since they're the most expensive thing you can read:
    ```sh
    contraire logs <name> -n 300 | grep -iE 'error|fatal|panic|exception|refused|denied|timeout|no such|killed|oom' | tail -40
    contraire logs <name> -n 60          # then the last lines before the crash, unfiltered

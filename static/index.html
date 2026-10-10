@@ -338,7 +338,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .lnav small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
 .lnav .src { padding: 12px; font-size: 12px; color: var(--muted); border-top: var(--rule) solid var(--line); }
 .lnav .src a { display: inline; padding: 0; border: 0; color: var(--accent-ink); }
-.doc { background: var(--panel); border: var(--rule) solid var(--line); padding: 40px clamp(20px, 4vw, 60px) 48px; max-width: 940px; line-height: 1.65; font-size: 15.5px; animation: fade .25s ease-out; }
+.doc { background: var(--panel); border: var(--rule) solid var(--line); padding: 40px clamp(20px, 4vw, 60px) 48px; line-height: 1.65; font-size: 15.5px; animation: fade .25s ease-out; }
 @keyframes fade { from { opacity: 0; } }
 .doc .kicker { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent-ink); }
 .doc h1 { font-family: var(--display); font-size: 44px; line-height: 1.02; letter-spacing: -0.03em; margin: 8px 0 16px; font-weight: 800; }
@@ -368,6 +368,29 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
 .doc .next a { text-decoration: none; font-weight: 800; color: var(--text); }
 .doc .next a:hover { color: var(--accent-ink); }
 .doc .next small { display: block; color: var(--accent-ink); font-weight: 700; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+
+/* patterns + incidents */
+.pats { border: var(--rule) solid var(--line); background: var(--panel-2); }
+.pat { border-top: 1px solid var(--line-soft); }
+.pat:first-child { border-top: 0; }
+.pat summary { display: grid; grid-template-columns: 110px 54px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px 12px; cursor: pointer; list-style: none; }
+.pat summary::-webkit-details-marker { display: none; }
+.pat summary:hover { background: var(--panel); }
+.pat .cnt { position: relative; display: block; height: 20px; font-family: var(--mono); font-size: 12px; }
+.pat .cnt i { position: absolute; inset: 0 auto 0 0; background: var(--track); }
+.pat .cnt b { position: relative; padding-left: 6px; line-height: 20px; }
+.pat.lv-error .cnt i { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+.pat .lvl { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pat.lv-error .lvl { color: var(--accent-ink); }
+.pat.lv-warn .lvl { color: var(--warn-fg); }
+.pat code { font-family: var(--mono); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pat[open] code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.pat .var { color: var(--accent-ink); background: var(--accent-soft); padding: 0 3px; font-weight: 600; }
+.pat .when { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.pat .ex { display: flex; flex-direction: column; gap: 4px; padding: 4px 12px 12px 188px; font-size: 12px; }
+.pat .ex code { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+@media (max-width: 700px) { .pat summary { grid-template-columns: 70px minmax(0, 1fr); } .pat .lvl, .pat .when { display: none; } .pat .ex { padding-left: 12px; } }
+.inc-tr { grid-template-columns: minmax(180px, 1.2fr) 190px minmax(0, 2.4fr) 110px; min-width: 760px; }
 
 /* cheat sheet */
 .sheet { columns: 3 400px; column-gap: 24px; }
@@ -435,6 +458,7 @@ dl.kvs dd .grow { flex: 1; min-width: 0; }
       <a href="#containers" data-nav="containers"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>Containers</span><span class="count" id="n-c">–</span></a>
       <a href="#stacks" data-nav="stacks"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12.5l9 5 9-5M3 17l9 5 9-5"/></svg><span>Stacks</span><span class="count" id="n-s">–</span></a>
       <a href="#images" data-nav="images"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="14" height="14" rx="3"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg><span>Images</span><span class="count" id="n-i">–</span></a>
+      <a href="#incidents" data-nav="incidents"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg><span>Incidents</span><span class="count" id="n-inc">–</span></a>
       <a href="#activity" data-nav="activity"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Activity</span></a>
       <a href="#learn" data-nav="learn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></svg><span>Learn</span></a>
       <a href="#cheatsheet" data-nav="cheatsheet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6M12 19h8"/></svg><span>Cheat sheet</span></a>
@@ -747,7 +771,7 @@ function rowsHtml() {
   return head + list.map(c => {
     const st = status(c);
     return `<div class="tr" data-href="#c/${esc(c.Id)}" tabindex="0" title="${esc(cname(c))}">
-      <div class="nm">${dotHtml(st)}<div><div class="t"><b>${displayName(c)}</b>${stackChip(c)}</div><span class="im">${imageHtml(c.Image)}</span></div></div>
+      <div class="nm">${dotHtml(st)}<div><div class="t"><b>${displayName(c)}</b>${stackChip(c)}${newErrBadge(c)}</div><span class="im">${imageHtml(c.Image)}</span></div></div>
       <span class="pill ${st.cls}">${st.label}</span>
       ${usageHtml(c)}
       <div class="ports">${portHtml(c)}</div>
@@ -843,6 +867,78 @@ function viewImages() {
 }
 
 function selfCpu() { const h = S.selfHist; return h.length ? h[h.length - 1].cpu : null; }
+
+/* ---------- log patterns ---------- */
+const newErrBadge = c => {
+  const n = S.patternsAll?.[c.Id.slice(0, 16)]?.new_error_patterns;
+  return n ? `<a class="pill s-bad" href="#c/${esc(c.Id)}" data-stop data-tabjump="patterns" style="height:20px;font-size:11px" title="Error messages that first appeared after the container started">${n} new error${n === 1 ? "" : "s"}</a>` : "";
+};
+/* Highlight the variable parts (<*>) of a pattern. */
+const patternHtml = t => esc(t).replace(/&lt;\*&gt;/g, '<span class="var">‹·›</span>');
+async function loadPatterns() {
+  const id = S.open, el = $("#d-patterns");
+  if (!id || !el) return;
+  try {
+    const p = await api(`/api/logs/patterns/${id}${S.patNew ? "?new=1" : ""}`);
+    if (S.open !== id) return;
+    const max = Math.max(1, ...p.patterns.map(x => x.count));
+    el.innerHTML = `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:12px">
+        <h2 style="margin:0">Log patterns</h2><span class="muted" style="font-size:13px">${p.lines.toLocaleString()} lines since ${ago(p.since)} → ${p.patterns.length} patterns${p.unclassified ? ` · ${p.unclassified} unclassified` : ""}</span>
+        <label class="chk" style="margin-left:auto;display:inline-flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="pat-new" ${S.patNew ? "checked" : ""}> only new since start</label></div>
+      ${p.patterns.length ? `<div class="pats">${p.patterns.map(x => `<details class="pat lv-${x.level || "none"}"><summary>
+          <span class="cnt"><i style="width:${Math.max(3, x.count / max * 100)}%"></i><b>${x.count.toLocaleString()}</b></span>
+          <span class="lvl">${x.level ? esc(x.level) : "·"}</span>
+          <code>${patternHtml(x.pattern)}</code>
+          <span class="when">${x.new ? '<span class="pill s-bad" style="height:18px;font-size:10.5px">NEW</span> ' : ""}${ago(x.last)}</span></summary>
+          <div class="ex"><span class="muted">example</span><code>${esc(x.example)}</code><span class="muted">first seen ${ago(x.first)} · last ${ago(x.last)}</span></div></details>`).join("")}</div>`
+        : `<p class="muted">${S.patNew ? "Nothing new since the container started." : "No log output yet."}</p>`}`;
+  } catch (e) { el.innerHTML = `<span class="muted">${esc(e.message)}</span>`; }
+}
+
+/* ---------- incidents: postmortems from the flight recorder ---------- */
+async function loadIncidents(id) {
+  try {
+    if (id) S.incident = await api(`/api/incidents/${encodeURIComponent(id)}`);
+    else S.incidents = await api("/api/incidents");
+    if (S.view === "incidents") render();
+  } catch (e) { toast(e.message, true); }
+}
+function viewIncidents() {
+  const head = sub => `<header class="ph"><div><div class="kick">${sub}</div><h1>Incidents</h1></div></header>`;
+  if (S.arg) return incidentDetail(S.incident && S.incident.id === S.arg ? S.incident : null);
+  const I = S.incidents;
+  if (!I) return head("flight recorder") + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  const intro = `<section class="card mood"><span class="badge${I.incidents.length ? "" : " ok"}" aria-hidden="true">${I.incidents.length ? "!" : "✓"}</span><div class="txt"><strong>${I.incidents.length ? `${I.incidents.length} crash${I.incidents.length === 1 ? "" : "es"} on record` : "No crashes recorded"}</strong>
+    <span class="muted">When a container stops with an error or runs out of memory, the flight recorder keeps a postmortem: the exit reason, its last log lines, new error patterns and its CPU and memory just before. It survives <code>docker rm</code>. Repeated crashes within 10 minutes count as one incident.</span></div></section>`;
+  if (!I.enabled) return head("flight recorder") + `<div class="card"><span class="muted">Postmortems are stored next to the audit log, which is off (<code>--audit-file off</code>).</span></div>`;
+  return head("flight recorder · newest first") + intro + (I.incidents.length ? `<div class="table"><div class="scroll"><div class="tr th inc-tr"><span>Container</span><span>Exit</span><span>Last line</span><span>When</span></div>
+    ${I.incidents.map(i => `<div class="tr inc-tr" data-href="#incidents/${esc(i.id)}" tabindex="0">
+      <span><b>${esc(i.container.name)}</b><span class="muted" style="font-size:12px;display:block">${esc(i.container.stack || "")}${i.repeats > 1 ? ` · <span style="color:var(--accent-ink);font-weight:700">crashed ${i.repeats}×</span>` : ""}</span></span>
+      <span><span class="pill s-bad">${i.oom_killed ? "out of memory" : "exit " + i.exit_code}</span><span class="muted" style="font-size:11.5px;display:block;margin-top:3px">${esc(EXIT_HINT[i.exit_code] || "")}</span></span>
+      <code class="mono" style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((i.headline || "").slice(0, 200))}</code>
+      <span class="muted">${ago(i.last)}</span></div>`).join("")}</div></div>` : "");
+}
+function incidentDetail(i) {
+  const crumbs = `<nav class="crumbs"><a href="#incidents">Incidents</a>${icon("chev", 14)}<span style="color:var(--text);font-weight:600">${esc(S.arg)}</span></nav>`;
+  if (!i) return crumbs + `<div class="card"><div class="skel" style="width:40%"></div></div>`;
+  const c = i.container, live = S.containers.find(x => x.Id === c.id);
+  const lines = (i.last_lines || []).map(l => { const lv = LV.find(([re]) => re.test(l)); return `<div class="ln${lv ? " " + lv[1] : ""}"><span class="lv">${lv ? lv[2] : ""}</span><span class="msg">${esc(l)}</span></div>`; }).join("");
+  const pats = (arr, empty) => arr?.length ? `<div class="pats">${arr.map(x => `<details class="pat lv-${x.level || "none"}"><summary><span class="cnt"><b>${x.count}</b></span><span class="lvl">${esc(x.level || "·")}</span><code>${patternHtml(x.pattern)}</code><span class="when">${x.new ? '<span class="pill s-bad" style="height:18px;font-size:10.5px">NEW</span>' : ""}</span></summary><div class="ex"><code>${esc(x.example)}</code></div></details>`).join("")}</div>` : `<p class="muted">${empty}</p>`;
+  return crumbs + `<header class="ph chead"><div style="min-width:0"><div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px"><h1>${esc(c.name)}</h1><span class="pill s-bad" style="height:30px;font-size:13px">${i.oom_killed ? "out of memory" : "exit " + i.exit_code}</span>${i.repeats > 1 ? `<span class="pill">crashed ${i.repeats}× in a row</span>` : ""}</div>
+      <div class="meta"><span>${imageHtml(c.image || "")}</span><span>${esc(c.stack || "")}${c.service ? " / " + esc(c.service) : ""}</span><span>${new Date(i.last * 1000).toLocaleString()}</span></div></div>
+      ${live ? `<a class="btn" href="#c/${esc(live.Id)}">Open container${icon("chev", 16)}</a>` : ""}</header>
+    <section class="grid">
+      <div class="card sum"><span class="k">Why it stopped</span><strong>${i.oom_killed ? "Ran out of memory" : esc(EXIT_HINT[i.exit_code] || "exit code " + i.exit_code)}</strong><small>${[i.error, i.memory_limit ? "memory limit " + fmtBytes(i.memory_limit) : ""].filter(Boolean).map(esc).join(" · ")}</small></div>
+      <div class="card sum"><span class="k">Restarts</span><strong>${i.restarts ?? "–"}</strong><small>first crash ${ago(i.first)} · last ${ago(i.last)}</small></div>
+      <figure class="card chart" style="margin:0"><figcaption><span>CPU before the end</span><span class="mono" style="font-size:12px">15 min</span></figcaption>${i.metrics?.cpu?.length > 1 ? spark(i.metrics.cpu, 50) : '<p class="muted">no samples</p>'}</figure>
+      <figure class="card chart" style="margin:0"><figcaption><span>Memory before the end</span><span class="mono" style="font-size:12px">${i.metrics?.mem?.length ? fmtBytes(Math.max(...i.metrics.mem)) + " peak" : ""}</span></figcaption>${i.metrics?.mem?.length > 1 ? spark(i.metrics.mem, 50) : '<p class="muted">no samples</p>'}</figure>
+    </section>
+    <section class="grid wide">
+      <div class="card"><h2 style="margin-bottom:10px">Error patterns</h2>${pats(i.error_patterns, "No error-level lines.")}</div>
+      <div class="card"><h2 style="margin-bottom:10px">New since it started</h2>${pats(i.new_patterns, "Nothing that wasn't there at startup.")}</div>
+    </section>
+    <div class="console"><div class="bar2"><b style="padding:0 6px">Last ${i.last_lines?.length || 0} log lines</b></div><div class="loglines" style="height:auto;max-height:60vh">${lines || '<div class="note">No output was captured.</div>'}</div></div>`;
+}
 
 /* ---------- activity: the audit log ---------- */
 const VERB = {
@@ -995,7 +1091,7 @@ function viewContainer() {
   if (!c) return `<nav class="crumbs"><a href="#containers">Containers</a></nav><div class="card empty" style="border-top:0">${BOAT(80)}<strong>Container not found</strong><span class="muted">It may have been removed.</span><a class="btn" href="#containers">Back to containers</a></div>`;
   if (S.open !== c.Id) { S.open = c.Id; connect(); }
   const p = L(c, PROJ);
-  const tabs = [["logs", "Logs"], ["stats", "Live stats"], ["details", "Details"], ["env", "Environment"]];
+  const tabs = [["logs", "Logs"], ["patterns", "Patterns"], ["stats", "Live stats"], ["details", "Details"], ["env", "Environment"]];
   return `<nav class="crumbs" aria-label="Breadcrumb"><a href="#containers">Containers</a>${icon("chev", 14)}${p ? `<a href="#stacks/${encodeURIComponent(p)}">${esc(p)} stack</a>${icon("chev", 14)}` : ""}<span style="color:var(--text);font-weight:600">${esc(cname(c))}</span></nav>
     <header class="ph chead" id="c-head">${containerHead(c)}</header>
     <section class="grid" id="c-sum" aria-label="Summary">${S.detail?.Id === c.Id ? summaryHtml(S.detail) : '<div class="card sum"><div class="skel" style="width:60%"></div></div>'.repeat(4)}</section>
@@ -1023,6 +1119,7 @@ function viewContainer() {
           <div class="tabs" role="group" aria-label="History range"><button data-hist="1h" aria-selected="${S.histRange !== "24h"}">Last hour</button><button data-hist="24h" aria-selected="${S.histRange === "24h"}">Last 24 hours</button></div>
           <span class="muted" style="font-size:12px">sampled from cgroups every 10 s (24 h: 1-minute averages)</span></div>
           <div class="grid wide" id="history"><div class="card"><div class="skel" style="width:40%"></div></div></div></section></div>
+      <div id="tab-patterns" ${S.tab === "patterns" ? "" : "hidden"}><div class="card" id="d-patterns"><div class="skel" style="width:40%"></div></div></div>
       <div id="tab-details" ${S.tab === "details" ? "" : "hidden"} style="display:flex;flex-direction:column;gap:24px"><div class="card" id="d-info"><div class="skel" style="width:50%"></div></div>
         <div class="card"><h2>History through this dashboard</h2><div id="c-history" style="margin-top:6px">${historyHtml()}</div></div></div>
       <div id="tab-env" ${S.tab === "env" ? "" : "hidden"}><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><h2>Environment</h2><button class="btn sm" id="d-envbtn">Reveal</button></div><pre class="envlist muted" id="d-env">Hidden, because environment variables often contain passwords and API keys.</pre></div></div>
@@ -1523,20 +1620,21 @@ function route() {
   const h = decodeURIComponent(location.hash.slice(1));
   const [v, ...rest] = h.split("/");
   const arg = rest.join("/") || null;
-  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet"].includes(v) ? v : "containers";
+  const view = v === "c" ? "container" : ["stacks", "images", "learn", "about", "activity", "access", "cheatsheet", "incidents"].includes(v) ? v : "containers";
   const wasOpen = S.open;
   if (view !== S.view) S.q = "";
   S.view = view; S.arg = arg;
   S.open = view === "container" ? arg : null;
-  if (S.open !== wasOpen) { S.detail = null; S.hist = []; S.tab = "logs"; }
+  if (S.open !== wasOpen) { S.detail = null; S.hist = []; S.tab = S.tabNext || "logs"; S.tabNext = null; }
   document.querySelectorAll("[data-nav]").forEach(a => a.setAttribute("aria-current", a.dataset.nav === (view === "container" ? "containers" : view) ? "page" : "false"));
   if (S.open !== wasOpen) connect();
   if (view === "learn") { Lr.slug = arg; return renderLearn(arg); }
   if (view === "cheatsheet") return renderCheatsheet();
   render();
-  if (view === "container") loadDetail();
+  if (view === "container") { loadDetail(); if (S.tab === "patterns") setTimeout(loadPatterns, 0); }
   if (view === "activity" || view === "container") loadAudit();
   if (view === "access") loadTokens();
+  if (view === "incidents") loadIncidents(arg);
   if (view !== "access") S.newToken = null;
   window.scrollTo({ top: 0 });
 }
@@ -1562,7 +1660,7 @@ function render(soft) {
     if (c) $("#c-head").innerHTML = containerHead(c);
     return;
   }
-  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, container: viewContainer }[S.view]();
+  const html = { containers: viewContainers, stacks: viewStacks, images: viewImages, about: viewAbout, activity: viewActivity, access: viewAccess, incidents: viewIncidents, container: viewContainer }[S.view]();
   // Keep the search box's focus and caret across re-renders, so typing isn't interrupted.
   const q = document.activeElement?.id === "q" ? $("#q") : null;
   const pos = q?.selectionStart;
@@ -1581,6 +1679,8 @@ document.addEventListener("click", async e => {
     else toast(ok ? "Copied to clipboard" : "Couldn't copy", !ok);
     return;
   }
+  const tj = e.target.closest("[data-tabjump]");
+  if (tj) { S.tabNext = tj.dataset.tabjump; return; }
   if (e.target.closest("[data-stop]")) return;
   const th = e.target.closest("[data-theme-set]");
   if (th) return setTheme(th.dataset.themeSet);
@@ -1602,7 +1702,8 @@ document.addEventListener("click", async e => {
   if (tab) {
     S.tab = tab.dataset.tab;
     document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", b === tab));
-    for (const k of ["logs", "stats", "details", "env"]) $("#tab-" + k).hidden = k !== S.tab;
+    for (const k of ["logs", "patterns", "stats", "details", "env"]) $("#tab-" + k).hidden = k !== S.tab;
+    if (S.tab === "patterns") loadPatterns();
     if (S.tab === "stats") { $("#charts").innerHTML = chartsHtml(S.hist[S.hist.length - 1] || null); loadHistory(); }
     return;
   }
@@ -1659,7 +1760,10 @@ document.addEventListener("input", e => {
     document.querySelectorAll("#d-logs .ln").forEach(l => { l.hidden = q && !l.textContent.toLowerCase().includes(q); });
   }
 });
-document.addEventListener("change", e => { if (e.target.id === "d-tail") connect(); });
+document.addEventListener("change", e => {
+  if (e.target.id === "d-tail") connect();
+  if (e.target.id === "pat-new") { S.patNew = e.target.checked; loadPatterns(); }
+});
 document.addEventListener("keydown", e => {
   if (!$("#modal").hidden) return;
   const tag = document.activeElement?.tagName;
@@ -1695,9 +1799,14 @@ window.addEventListener("hashchange", route);
 /* Pushed events cover every change; this slow poll only refreshes texts like "Up 5 minutes". */
 setInterval(() => { if (!document.hidden) refresh(false); }, 15000);
 /* cgroup metrics refresh every 10 s on the server; follow along while visible. */
+async function loadIncidentCount() {
+  try { const r = await api("/api/incidents"); S.incidents = r; $("#n-inc").textContent = r.incidents.length; } catch {}
+}
+loadIncidentCount();
+setInterval(() => { if (!document.hidden) loadIncidentCount(); }, 30000);
 async function loadMetrics() {
   try {
-    S.metrics = await api("/api/metrics?spark=30");
+    [S.metrics, S.patternsAll] = await Promise.all([api("/api/metrics?spark=30"), api("/api/logs/patterns").catch(() => S.patternsAll)]);
     if (S.view === "containers" && $("#rows") && document.activeElement?.id !== "q") render(true);
     else if (S.view === "stacks") render(true);
   } catch {}

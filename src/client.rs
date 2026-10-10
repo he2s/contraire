@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use crate::docker::{Docker, Tick};
 
 pub const COMMANDS: &[&str] =
-    &["init", "ps", "top", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
+    &["init", "ps", "top", "patterns", "incidents", "incident", "inspect", "logs", "start", "stop", "restart", "pause", "unpause", "stacks", "stack", "events", "activity", "info", "mcp"];
 
 const HELP: &str = "\
 Client mode: control a contraire server from this machine.
@@ -28,6 +28,9 @@ Commands:
   init <dir>                 Create a session folder for Claude Code: skill, config, action log, journal
   ps                         List containers
   top                        CPU, memory, network and disk per container, busiest first
+  patterns <container> [--new]   Log lines grouped into patterns with counts (errors first)
+  incidents                  Crashes caught by the flight recorder
+  incident <id>              One postmortem: exit reason, last lines, error patterns, metrics
   inspect <container>        State, health, exit reason, ports, mounts, compose info
   logs <container> [-n N] [-f] [-t]   Last N lines (default 100); -f follows live, -t shows timestamps
   start|stop|restart|pause|unpause <container>
@@ -42,6 +45,7 @@ Options:
   --host <URL>    Server, e.g. http://pi.local:8083   [env: CONTRAIRE_HOST] [default: http://127.0.0.1:8083]
   --token <TOKEN> API token from the Access page      [env: CONTRAIRE_TOKEN]
   --json          Print the raw JSON instead of a table
+  --new           (patterns) only patterns that first appeared after the container started
   --skill-from <PATH>   (init) copy the skill from a local file instead of GitHub
 
 Sessions: inside a folder made by `contraire init`, host and token come from .contraire/,
@@ -369,6 +373,85 @@ fn metrics_summary(name: &str, range: &str, h: &Value) -> String {
     )
 }
 
+fn patterns_text(name: &str, p: &Value, limit: usize) -> String {
+    let ps = p["patterns"].as_array().cloned().unwrap_or_default();
+    let mut out = format!(
+        "{name}: {} lines since {} grouped into {} patterns (<*> = varies)\n",
+        p["lines"],
+        ago(p["since"].as_u64().unwrap_or(0)),
+        ps.len()
+    );
+    let mut rows = vec![vec!["COUNT".into(), "LEVEL".into(), "LAST".into(), "PATTERN".into()]];
+    for x in ps.iter().take(limit) {
+        let new = if x["new"] == true { "NEW " } else { "" };
+        rows.push(vec![x["count"].to_string(), s(x, "/level").into(), ago(x["last"].as_u64().unwrap_or(0)), format!("{new}{}", s(x, "/pattern"))]);
+    }
+    out.push_str(&table(&rows));
+    if ps.len() > limit {
+        out.push_str(&format!("… {} more\n", ps.len() - limit));
+    }
+    out
+}
+
+fn incidents_text(v: &Value) -> String {
+    let is = v["incidents"].as_array().cloned().unwrap_or_default();
+    if v["enabled"] == false {
+        return "The flight recorder is off (it needs the audit log's state directory).\n".into();
+    }
+    if is.is_empty() {
+        return "No crashes recorded.\n".into();
+    }
+    let mut rows = vec![vec!["ID".into(), "CONTAINER".into(), "EXIT".into(), "TIMES".into(), "WHEN".into(), "LAST LINE".into()]];
+    for i in &is {
+        let exit = if i["oom_killed"] == true { "OOM".to_string() } else { i["exit_code"].to_string() };
+        rows.push(vec![s(i, "/id").into(), s(i, "/container/name").into(), exit, i["repeats"].to_string(), ago(i["last"].as_u64().unwrap_or(0)), s(i, "/headline").chars().take(90).collect()]);
+    }
+    table(&rows)
+}
+
+fn incident_text(i: &Value) -> String {
+    let code = i["exit_code"].as_i64().unwrap_or(0);
+    let hint = EXIT_HINT.iter().find(|(c, _)| *c == code).map_or("", |(_, h)| h);
+    let mem: Vec<f64> = i["metrics"]["mem"].as_array().into_iter().flatten().filter_map(Value::as_f64).collect();
+    let cpu: Vec<f64> = i["metrics"]["cpu"].as_array().into_iter().flatten().filter_map(Value::as_f64).collect();
+    let peak = |v: &[f64]| v.iter().cloned().fold(0.0, f64::max);
+    let mut out = format!(
+        "{} ({}/{}) stopped {}: {}\ncrashed {}× · restarts {} · first {} · last {}\n",
+        s(i, "/container/name"),
+        s(i, "/container/stack"),
+        s(i, "/container/service"),
+        if i["oom_killed"] == true { "OUT OF MEMORY".to_string() } else { format!("with exit code {code}") },
+        hint,
+        i["repeats"],
+        i["restarts"],
+        ago(i["first"].as_u64().unwrap_or(0)),
+        ago(i["last"].as_u64().unwrap_or(0)),
+    );
+    if !mem.is_empty() {
+        out.push_str(&format!(
+            "before the end (15 min): cpu peak {:.1}% · memory peak {} · last {}\n",
+            peak(&cpu),
+            mb(peak(&mem)),
+            mb(*mem.last().unwrap_or(&0.0))
+        ));
+    }
+    for (title, key) in [("error patterns", "error_patterns"), ("new since start", "new_patterns")] {
+        let ps = i[key].as_array().cloned().unwrap_or_default();
+        if !ps.is_empty() {
+            out.push_str(&format!("\n{title}:\n"));
+            for p in ps.iter().take(8) {
+                out.push_str(&format!("  {:>6}× {}\n", p["count"], s(p, "/pattern")));
+            }
+        }
+    }
+    let lines: Vec<&str> = i["last_lines"].as_array().into_iter().flatten().filter_map(Value::as_str).collect();
+    out.push_str(&format!("\nlast {} lines:\n", lines.len().min(40)));
+    for l in &lines[lines.len().saturating_sub(40)..] {
+        out.push_str(&format!("  {l}\n"));
+    }
+    out
+}
+
 fn stacks_text(list: &Value) -> String {
     let mut by: std::collections::BTreeMap<String, Vec<&Value>> = Default::default();
     for c in list.as_array().into_iter().flatten() {
@@ -471,6 +554,7 @@ struct Args {
     json: bool,
     follow: bool,
     timestamps: bool,
+    new: bool,
     n: Option<u32>,
     since: Option<u64>,
     pos: Vec<String>,
@@ -484,6 +568,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         json: false,
         follow: false,
         timestamps: false,
+        new: false,
         n: None,
         since: None,
         pos: Vec::new(),
@@ -502,6 +587,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
             "--json" => a.json = true,
             "-f" | "--follow" => a.follow = true,
             "-t" | "--timestamps" => a.timestamps = true,
+            "--new" => a.new = true,
             "-n" | "--tail" => a.n = Some(val("-n")?.parse().map_err(|_| "-n needs a number")?),
             "--since" => a.since = Some(val("--since")?.parse().map_err(|_| "--since needs minutes")?),
             "-h" | "--help" => a.pos.insert(0, "help".into()),
@@ -740,6 +826,19 @@ fn cli(r: &Remote, cmd: &str, a: &Args) -> Result<String, String> {
             r.post(&format!("/api/containers/{}/{cmd}", enc(&c)), None)?;
             Ok(format!("{c}: {cmd} done\n"))
         }
+        "patterns" => {
+            let c = arg(1, "container")?;
+            let v = r.get(&format!("/api/logs/patterns/{}{}", enc(&c), if a.new { "?new=1" } else { "" }))?;
+            if a.json { raw(v) } else { Ok(patterns_text(&c, &v, a.n.unwrap_or(40) as usize)) }
+        }
+        "incidents" => {
+            let v = r.get("/api/incidents")?;
+            if a.json { raw(v) } else { Ok(incidents_text(&v)) }
+        }
+        "incident" => {
+            let v = r.get(&format!("/api/incidents/{}", enc(&arg(1, "incident id (see 'contraire incidents')")?)))?;
+            if a.json { raw(v) } else { Ok(incident_text(&v)) }
+        }
         "top" => {
             let (l, m) = (r.get("/api/containers")?, r.get("/api/metrics?spark=0")?);
             if a.json { raw(m) } else { Ok(top_text(&l, &m)) }
@@ -842,6 +941,16 @@ fn tools() -> Value {
               "container": { "type": "string", "description": "Container name or ID" },
               "range": { "type": "string", "enum": ["1h", "24h"], "description": "Default 1h" } }, "required": ["container"] },
           "annotations": ro },
+        { "name": "log_patterns", "title": "Log patterns of a container",
+          "description": "The container's log since it started, grouped into patterns with counts (variable parts shown as <*>), errors first, with first/last seen and whether the pattern is NEW since start. Far cheaper than reading raw logs; read raw lines afterwards only for the patterns that matter.",
+          "inputSchema": { "type": "object", "properties": {
+              "container": { "type": "string", "description": "Container name or ID" },
+              "only_new": { "type": "boolean", "description": "Only patterns that first appeared after startup (what changed)" } }, "required": ["container"] },
+          "annotations": ro },
+        { "name": "incidents", "title": "Crash postmortems",
+          "description": "Crashes caught by the flight recorder (non-zero exit or OOM): without an id, the list; with an id, the postmortem with exit reason, last log lines, error and new patterns and CPU/memory in the 15 minutes before the end.",
+          "inputSchema": { "type": "object", "properties": { "id": { "type": "string", "description": "Incident id from the list" } } },
+          "annotations": ro },
         { "name": "list_stacks", "title": "List compose stacks",
           "description": "Docker Compose projects on the host: how many services are up and which need attention.",
           "inputSchema": { "type": "object", "properties": {} }, "annotations": ro },
@@ -888,6 +997,15 @@ fn call_tool(r: &Remote, name: &str, args: &Value) -> Result<String, String> {
         }
         "container_stats" => r.get(&format!("/api/containers/{}/stats", enc(&str_arg("container")?))).map(|v| stats_text(&v)),
         "list_stacks" => r.get("/api/containers").map(|v| stacks_text(&v)),
+        "log_patterns" => {
+            let c = str_arg("container")?;
+            let only_new = args.get("only_new").and_then(Value::as_bool).unwrap_or(false);
+            r.get(&format!("/api/logs/patterns/{}{}", enc(&c), if only_new { "?new=1" } else { "" })).map(|v| patterns_text(&c, &v, 40))
+        }
+        "incidents" => match args.get("id").and_then(Value::as_str) {
+            Some(id) => r.get(&format!("/api/incidents/{}", enc(id))).map(|v| incident_text(&v)),
+            None => r.get("/api/incidents").map(|v| incidents_text(&v)),
+        },
         "top_containers" => Ok(top_text(&r.get("/api/containers")?, &r.get("/api/metrics?spark=0")?)),
         "container_metrics" => {
             let c = str_arg("container")?;
